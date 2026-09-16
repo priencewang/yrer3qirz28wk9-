@@ -85,6 +85,9 @@
 
   .pie-layout { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
   .pie-svg-wrap { flex-shrink: 0; }
+  .pie-selected-info { min-width: 130px; flex-shrink: 0; }
+  .pie-selected-info .psi-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .pie-selected-info .psi-value { font-size: 21px; font-weight: 700; line-height: 1.25; }
   .pie-legend { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 3px; }
   .pie-legend-row {
     display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer;
@@ -157,6 +160,7 @@
       </div>
       <div class="pie-layout">
         <div class="pie-svg-wrap" id="pie-svg-wrap"></div>
+        <div class="pie-selected-info" id="pie-selected-info"></div>
         <div class="pie-legend" id="pie-legend"></div>
       </div>
     </div>
@@ -229,11 +233,23 @@
   function renderPie(basis) {
     const wrap = document.getElementById('pie-svg-wrap');
     const legend = document.getElementById('pie-legend');
-    wrap.innerHTML = ''; legend.innerHTML = '';
+    const infoEl = document.getElementById('pie-selected-info');
+    wrap.innerHTML = ''; legend.innerHTML = ''; infoEl.innerHTML = '';
     const dataMap = basis === 'cost' ? DATA.pie_cost : DATA.pie_value;
     const cats = DATA.pie_categories;
     const pieColors = DATA.pie_colors;
     const slices = []; // {path, midAngle}
+
+    // 2026/09/16新增：點切片/圖例時，右側空白區顯示該產業的實際金額(不是百分比)——
+    // 成本佔比模式顯示這個產業總共投入多少成本，市值佔比模式顯示目前市值多少。
+    // 直接從table_rows加總(跟區塊2「完整持股明細」同樣的算法)，不用百分比反推、避免
+    // 四捨五入誤差。
+    const categoryAbsTotal = {};
+    cats.forEach(c => {
+      categoryAbsTotal[c] = DATA.table_rows
+        .filter(r => r.industry === c)
+        .reduce((s, r) => s + (basis === 'cost' ? (r.cost_total || 0) : (r.value || 0)), 0);
+    });
 
     const size = 240, r = 95, rInner = 56, cx = size / 2, cy = size / 2;
     const svg = svgEl('svg', { viewBox: '0 0 ' + size + ' ' + size, width: size, height: size, style: 'overflow:visible' });
@@ -294,6 +310,14 @@
     // 對出「這塊」對應哪個產業；再點一次同一塊(或已經沒有選取)則全部恢復正常。
     function selectSlice(i) {
       selectedSliceIndex = selectedSliceIndex === i ? null : i;
+      if (selectedSliceIndex === null) {
+        infoEl.innerHTML = '';
+      } else {
+        const cat = cats[selectedSliceIndex];
+        infoEl.innerHTML = '<div class="psi-label"></div><div class="psi-value"></div>';
+        infoEl.querySelector('.psi-label').textContent = cat + (basis === 'cost' ? '　投入成本' : '　目前市值');
+        infoEl.querySelector('.psi-value').textContent = fmtMoney(categoryAbsTotal[cat]);
+      }
       slices.forEach((s, idx) => {
         const isSel = selectedSliceIndex === idx;
         const dim = selectedSliceIndex !== null && !isSel;
