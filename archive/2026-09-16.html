@@ -276,7 +276,11 @@
     const dataMap = basis === 'cost' ? DATA.pie_cost : DATA.pie_value;
     const cats = DATA.pie_categories;
     const pieColors = DATA.pie_colors;
-    const slices = []; // {path, midAngle}
+    const slices = {}; // 用原始類別索引(i)當key，不是畫圖順序，顏色/選取狀態才不會錯亂
+    // 2026/09/17新增：RAY要求圓餅圖跟圖例依百分比由高到低排列(原本是固定依產業編號
+    // 1~11排序)。顏色仍然固定跟著原始類別索引(i)走，不會因為排序換位置就換色——
+    // 「畫的順序」變了，但「這個類別永遠是這個顏色」的CVD安全規則沒有變。
+    const order = cats.map((c, i) => i).sort((a, b) => (dataMap[cats[b]] || 0) - (dataMap[cats[a]] || 0));
 
     // 2026/09/16新增：點切片/圖例時，右側空白區顯示該產業的實際金額(不是百分比)——
     // 成本佔比模式顯示這個產業總共投入多少成本，市值佔比模式顯示目前市值多少。
@@ -293,7 +297,8 @@
     const svg = svgEl('svg', { viewBox: '0 0 ' + size + ' ' + size, width: size, height: size, style: 'overflow:visible' });
     let angle = -Math.PI / 2;
     const total = cats.reduce((s, c) => s + (dataMap[c] || 0), 0) || 100;
-    cats.forEach((c, i) => {
+    order.forEach(i => {
+      const c = cats[i];
       const v = dataMap[c] || 0;
       const frac = v / total;
       const a0 = angle, a1 = angle + frac * Math.PI * 2;
@@ -311,7 +316,7 @@
       path.appendChild(title);
       path.addEventListener('click', () => selectSlice(i));
       svg.appendChild(path);
-      slices.push({ path, midAngle: (a0 + a1) / 2 });
+      slices[i] = { path, midAngle: (a0 + a1) / 2 };
       // direct label for slices >= 5%(11類之後平均一塊約9%，門檻跟著調低一點，太小的
       // 塊(例如0.3%)標了也塞不下、字會重疊，留給圖例+tooltip承接就好)
       if (frac >= 0.05) {
@@ -332,7 +337,8 @@
     svg.appendChild(centerDate);
     wrap.appendChild(svg);
 
-    cats.forEach((c, i) => {
+    order.forEach(i => {
+      const c = cats[i];
       const row = document.createElement('div');
       row.className = 'pie-legend-row';
       row.dataset.index = i;
@@ -356,7 +362,8 @@
         infoEl.querySelector('.psi-label').textContent = cat + (basis === 'cost' ? '　投入成本' : '　目前市值');
         infoEl.querySelector('.psi-value').textContent = fmtMoney(categoryAbsTotal[cat]);
       }
-      slices.forEach((s, idx) => {
+      order.forEach(idx => {
+        const s = slices[idx];
         const isSel = selectedSliceIndex === idx;
         const dim = selectedSliceIndex !== null && !isSel;
         s.path.style.opacity = dim ? '0.35' : '1';
@@ -440,12 +447,18 @@
     const openCodes = new Set(Array.from(list.querySelectorAll('.acc-item .acc-item[open]')).map(d => d.dataset.code));
     list.innerHTML = '';
 
-    DATA.pie_categories.forEach((cat, i) => {
-      const stocks = DATA.table_rows.filter(r => r.industry === cat);
-      if (!stocks.length) return;
-      const total = stocks.reduce((s, r) => s + (r[metric] || 0), 0);
-      const color = DATA.pie_colors[i];
+    // 2026/09/17新增：RAY要求依目前切換鈕(損益/市值/成本)的數值由高至低排序，不再
+    // 固定依產業編號1~11——顏色還是照原始類別索引(i)走，只有排列順序改變。
+    const categoryInfos = DATA.pie_categories
+      .map((cat, i) => {
+        const stocks = DATA.table_rows.filter(r => r.industry === cat);
+        const total = stocks.reduce((s, r) => s + (r[metric] || 0), 0);
+        return { cat, i, stocks, total, color: DATA.pie_colors[i] };
+      })
+      .filter(info => info.stocks.length)
+      .sort((a, b) => b.total - a.total);
 
+    categoryInfos.forEach(({ cat, i, stocks, total, color }) => {
       const catItem = document.createElement('details');
       catItem.className = 'acc-item';
       catItem.dataset.cat = cat;
