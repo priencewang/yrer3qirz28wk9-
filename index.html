@@ -175,6 +175,7 @@
       <div class="basis-toggle" id="metric-toggle">
         <button class="basis-btn is-active" data-metric="pnl">損益</button>
         <button class="basis-btn" data-metric="value">市值</button>
+        <button class="basis-btn" data-metric="cost_total">成本</button>
       </div>
       <div id="category-list"></div>
     </div>
@@ -403,7 +404,11 @@
     return grid;
   }
 
-  let metric = 'pnl'; // 'pnl' 或 'value'，跟上方切換鈕連動
+  let metric = 'pnl'; // 'pnl'/'value'/'cost_total'，跟上方切換鈕連動
+  // 2026/09/16新增：切換鈕跟旁邊的「較昨日」徽章要顯示哪個變化欄位是連動的——損益模式
+  // 看N/O，成本模式看K/L；市值沒有對應的每日變化欄位可比對，就不顯示徽章。
+  const DELTA_KEY = { pnl: 'pnl_change', cost_total: 'cost_change' };
+  const DELTA_KEY_INDUSTRY = { pnl: 'industry_pnl_change', cost_total: 'industry_cost_change' };
 
   function renderCategoryList() {
     const list = document.getElementById('category-list');
@@ -425,10 +430,15 @@
 
       const catSummary = document.createElement('summary');
       catSummary.className = 'acc-btn';
-      const catColorCls = total >= 0 ? 'pnl-up' : 'pnl-down';
-      // O「產業損益變化」是整個產業族群共用的同一個數字(每檔股票的資料裡都重複存了
-      // 一份)，取任一筆非空值即可，不用加總
-      const catDelta = stocks.map(r => r.industry_pnl_change).find(v => v !== null && v !== undefined);
+      // 成本本身沒有「賺賠」語意(投入多少就是多少)，不套紅漲藍跌上色，避免RAY誤以為
+      // 紅色代表獲利；損益/市值維持原本依正負上色
+      const catColorCls = metric === 'cost_total' ? '' : (total >= 0 ? 'pnl-up' : 'pnl-down');
+      // O產業損益變化／L產業成本變化都是整個產業族群共用的同一個數字(每檔股票的資料裡
+      // 都重複存了一份)，取任一筆非空值即可，不用加總；市值模式沒有對應變化欄位
+      const industryDeltaKey = DELTA_KEY_INDUSTRY[metric];
+      const catDelta = industryDeltaKey
+        ? stocks.map(r => r[industryDeltaKey]).find(v => v !== null && v !== undefined)
+        : undefined;
       catSummary.innerHTML =
         '<span class="swatch" style="background:' + color + '"></span>' +
         '<span class="name"></span><span class="count"></span>' +
@@ -449,10 +459,12 @@
 
         const stockSummary = document.createElement('summary');
         stockSummary.className = 'acc-btn';
-        const valColor = (r[metric] || 0) >= 0 ? 'pnl-up' : 'pnl-down';
+        const valColor = metric === 'cost_total' ? '' : ((r[metric] || 0) >= 0 ? 'pnl-up' : 'pnl-down');
+        const stockDeltaKey = DELTA_KEY[metric];
+        const stockDelta = stockDeltaKey ? r[stockDeltaKey] : undefined;
         stockSummary.innerHTML =
           '<span class="name"></span><span class="quick-val ' + valColor + '"></span>' +
-          deltaBadgeHtml(r.pnl_change) + '<span class="arrow">▶</span>';
+          deltaBadgeHtml(stockDelta) + '<span class="arrow">▶</span>';
         stockSummary.querySelector('.name').textContent = r.name;
         stockSummary.querySelector('.quick-val').textContent = fmtMoney(r[metric]);
         stockItem.appendChild(stockSummary);
