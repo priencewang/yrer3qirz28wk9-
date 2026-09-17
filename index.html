@@ -60,9 +60,11 @@
     padding: 28px 20px 60px;
   }
   .wrap { max-width: 1080px; margin: 0 auto; }
-  .hdr { margin-bottom: 22px; }
+  .hdr { margin-bottom: 22px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   .hdr h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
   .hdr p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+  .hdr .history-link { font-size: 12.5px; color: var(--accent); text-decoration: none; white-space: nowrap; padding-top: 4px; }
+  .hdr .history-link:hover { text-decoration: underline; }
 
   .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
   @media (max-width: 720px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
@@ -150,8 +152,11 @@
 <div class="viz-root">
   <div class="wrap">
     <div class="hdr">
-      <h1>單日持股明細</h1>
-      <p id="hdr-sub"></p>
+      <div>
+        <h1>單日持股明細</h1>
+        <p id="hdr-sub"></p>
+      </div>
+      <a class="history-link" href="history.html">查看歷史報告 ›</a>
     </div>
 
     <div class="kpi-row" id="kpi-row"></div>
