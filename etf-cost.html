@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ETF真實成本</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1:   #fcfcfb;
+    --page-plane:  #f9f9f7;
+    --text-primary:#0b0b0b;
+    --text-secondary:#52514e;
+    --text-muted:  #898781;
+    --gridline:    #e1e0d9;
+    --border:      rgba(11,11,11,0.10);
+    --accent:      #2a78d6;
+    --gain:        #e34948; /* 台股慣例：紅=漲/賺 */
+    --loss:        #2a78d6; /* 台股慣例：藍=跌/賠 */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .viz-root {
+      color-scheme: dark;
+      --surface-1:   #1a1a19;
+      --page-plane:  #0d0d0d;
+      --text-primary:#ffffff;
+      --text-secondary:#c3c2b7;
+      --text-muted:  #898781;
+      --gridline:    #2c2c2a;
+      --border:      rgba(255,255,255,0.10);
+      --accent:      #3987e5;
+      --gain:        #e66767;
+      --loss:        #3987e5;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:   #1a1a19;
+    --page-plane:  #0d0d0d;
+    --text-primary:#ffffff;
+    --text-secondary:#c3c2b7;
+    --text-muted:  #898781;
+    --gridline:    #2c2c2a;
+    --border:      rgba(255,255,255,0.10);
+    --accent:      #3987e5;
+    --gain:        #e66767;
+    --loss:        #3987e5;
+  }
+  .viz-root {
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100%;
+    padding: 28px 20px 60px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .hdr { margin-bottom: 22px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .hdr h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+  .hdr p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+  .hdr .back-link { font-size: 12.5px; color: var(--accent); text-decoration: none; white-space: nowrap; padding-top: 4px; }
+  .hdr .back-link:hover { text-decoration: underline; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 720px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .tile .value { font-size: 21px; font-weight: 700; line-height: 1.2; }
+  .tile .sub { font-size: 12.5px; margin-top: 4px; font-weight: 600; }
+  .tile .sub.up { color: var(--gain); }
+  .tile .sub.down { color: var(--loss); }
+
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 2px; }
+  .card .sub { font-size: 12px; color: var(--text-secondary); margin: 0 0 14px; }
+
+  .acc-item { border: 1px solid var(--border); border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
+  .acc-btn {
+    width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    background: var(--page-plane); border: none; cursor: pointer; font-family: inherit; text-align: left;
+    -webkit-appearance: none; list-style: none;
+  }
+  .acc-btn::-webkit-details-marker { display: none; }
+  .acc-btn::marker { content: ""; }
+  .acc-btn .name { font-weight: 700; font-size: 14px; color: var(--text-primary); flex-shrink: 0; }
+  .acc-btn .code { color: var(--text-muted); font-size: 11.5px; flex: 1; }
+  .acc-btn .pnl { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 14px; flex-shrink: 0; }
+  .acc-btn .pnl.up { color: var(--gain); }
+  .acc-btn .pnl.down { color: var(--loss); }
+  .acc-btn .pct { font-size: 11.5px; font-variant-numeric: tabular-nums; flex-shrink: 0; min-width: 52px; text-align: right; }
+  .acc-btn .pct.up { color: var(--gain); }
+  .acc-btn .pct.down { color: var(--loss); }
+  .acc-btn .arrow { color: var(--text-muted); transition: transform .15s; flex-shrink: 0; }
+  details[open] > .acc-btn .arrow { transform: rotate(90deg); }
+  .acc-btn:hover { background: var(--gridline); }
+  .acc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  .bar-wrap { padding: 4px 14px 14px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11.5px; color: var(--text-secondary); }
+  .bar-row .bar-label { width: 68px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 8px; border-radius: 4px; background: var(--gridline); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; }
+  .bar-row .bar-value { width: 92px; flex-shrink: 0; text-align: right; font-variant-numeric: tabular-nums; color: var(--text-primary); font-weight: 600; }
+
+  .detail-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
+    background: var(--gridline); border-top: 1px solid var(--gridline);
+  }
+  .detail-field { background: var(--surface-1); padding: 10px 14px; }
+  .detail-field .f-label { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+  .detail-field .f-value { font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .detail-field .f-value.up { color: var(--gain); }
+  .detail-field .f-value.down { color: var(--loss); }
+
+  .footnote { font-size: 11.5px; color: var(--text-muted); line-height: 1.7; padding: 4px 2px; }
+  .empty { padding: 24px 12px; color: var(--text-secondary); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="viz-root">
+  <div class="wrap">
+    <div class="hdr">
+      <div>
+        <h1>ETF真實成本</h1>
+        <p id="hdr-sub"></p>
+      </div>
+      <a class="back-link" href="index.html">‹ 回到單日持股明細</a>
+    </div>
+
+    <div class="kpi-row" id="kpi-row"></div>
+
+    <div class="card">
+      <h2>逐檔明細</h2>
+      <p class="sub">「真實本金」是每一批買進當下的原始成交金額加總，不受配息侵蝕成本的影響；點開看跟永豐系統顯示的官方成本/損益對照</p>
+      <div id="etf-list"></div>
+    </div>
+
+    <div class="footnote" id="footnote"></div>
+  </div>
+</div>
+
+<script type="application/json" id="etf-cost-data">
+{"date": "2026-09-17", "source_file": "每日庫存20260917.xlsx", "log_last_run_at": "2026-09-17 17:11:35", "kpi": {"etf_count": 11, "total_real_principal": 2514423, "total_real_value": 3076265, "total_real_pnl": 561842, "total_real_return_pct": 22.34, "total_official_cost": 2514550, "total_official_pnl": 561715, "total_ex_dividends": 28443}, "table_rows": [{"code": "009816", "name": "凱基台灣TOP50", "shares": 60000, "price": 16.04, "earliest_buy_date": "2026-02-03", "batch_count": 4, "real_principal": 634601, "real_fee": 901, "cumulative_ex_dividends": 0, "real_value": 960269, "real_pnl": 325668, "real_return_pct": 51.32, "official_cost": 634800, "official_pnl": 325469, "official_cost_avg": 10.58}, {"code": "00830", "name": "國泰費城半導體", "shares": 8000, "price": 80.45, "earliest_buy_date": "2026-01-29", "batch_count": 6, "real_principal": 459100, "real_fee": 650, "cumulative_ex_dividends": 0, "real_value": 642065, "real_pnl": 182965, "real_return_pct": 39.85, "official_cost": 459120, "official_pnl": 182945, "official_cost_avg": 57.39}, {"code": "00964", "name": "中信亞太高股息", "shares": 15000, "price": 14.78, "earliest_buy_date": "2026-01-26", "batch_count": 3, "real_principal": 177600, "real_fee": 270, "cumulative_ex_dividends": 13920, "real_value": 221165, "real_pnl": 43565, "real_return_pct": 24.53, "official_cost": 177600, "official_pnl": 43565, "official_cost_avg": 11.84}, {"code": "00924", "name": "復華S&P500成長", "shares": 8000, "price": 32.82, "earliest_buy_date": "2026-05-04", "batch_count": 1, "real_principal": 247231, "real_fee": 351, "cumulative_ex_dividends": 0, "real_value": 261893, "real_pnl": 14662, "real_return_pct": 5.93, "official_cost": 247200, "official_pnl": 14693, "official_cost_avg": 30.9}, {"code": "00685L", "name": "群益臺灣加權正2", "shares": 13000, "price": 11.98, "earliest_buy_date": "2026-07-21", "batch_count": 2, "real_principal": 143253, "real_fee": 203, "cumulative_ex_dividends": 0, "real_value": 155372, "real_pnl": 12119, "real_return_pct": 8.46, "official_cost": 143260, "official_pnl": 12112, "official_cost_avg": 11.02}, {"code": "009802", "name": "富邦旗艦50", "shares": 7000, "price": 19.79, "earliest_buy_date": "2026-07-06", "batch_count": 8, "real_principal": 131834, "real_fee": 184, "cumulative_ex_dividends": 1323, "real_value": 138177, "real_pnl": 6343, "real_return_pct": 4.81, "official_cost": 131810, "official_pnl": 6367, "official_cost_avg": 18.83}, {"code": "00935", "name": "野村臺灣新科技50", "shares": 4000, "price": 56.55, "earliest_buy_date": "2026-07-06", "batch_count": 9, "real_principal": 228616, "real_fee": 331, "cumulative_ex_dividends": 7320, "real_value": 225641, "real_pnl": -2975, "real_return_pct": -1.3, "official_cost": 228600, "official_pnl": -2959, "official_cost_avg": 57.15}, {"code": "00402A", "name": "主動安聯美國科技", "shares": 7000, "price": 9.52, "earliest_buy_date": "2026-06-08", "batch_count": 1, "real_principal": 70000, "real_fee": 0, "cumulative_ex_dividends": 0, "real_value": 66480, "real_pnl": -3520, "real_return_pct": -5.03, "official_cost": 70000, "official_pnl": -3520, "official_cost_avg": 10}, {"code": "00725B", "name": "國泰投資級公司債", "shares": 6000, "price": 33.88, "earliest_buy_date": "2026-02-02", "batch_count": 2, "real_principal": 207423, "real_fee": 303, "cumulative_ex_dividends": 5880, "real_value": 202988, "real_pnl": -4435, "real_return_pct": -2.14, "official_cost": 207420, "official_pnl": -4432, "official_cost_avg": 34.57}, {"code": "00407A", "name": "主動凱基台灣", "shares": 10000, "price": 9.35, "earliest_buy_date": "2026-06-30", "batch_count": 1, "real_principal": 98740, "real_fee": 140, "cumulative_ex_dividends": 0, "real_value": 93234, "real_pnl": -5506, "real_return_pct": -5.58, "official_cost": 98700, "official_pnl": -5466, "official_cost_avg": 9.87}, {"code": "00631L", "name": "元大台灣50正2", "shares": 3000, "price": 36.41, "earliest_buy_date": "2026-06-30", "batch_count": 1, "real_principal": 116025, "real_fee": 165, "cumulative_ex_dividends": 0, "real_value": 108981, "real_pnl": -7044, "real_return_pct": -6.07, "official_cost": 116040, "official_pnl": -7059, "official_cost_avg": 38.68}]}
+</script>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('etf-cost-data').textContent);
+  const fmtMoney = (n) => n === null || n === undefined ? '—' : '$' + Math.round(n).toLocaleString('en-US');
+  const fmtPct = (n, d) => n === null || n === undefined ? '—' : (n > 0 ? '+' : '') + n.toFixed(d === undefined ? 1 : d) + '%';
+
+  document.getElementById('hdr-sub').textContent =
+    DATA.date ? ('目前市值資料日期：' + DATA.date + '（來源：' + DATA.source_file + '）') : '尚未產生資料';
+
+  const kpi = DATA.kpi || {};
+  const kpiRow = document.getElementById('kpi-row');
+  const returnDir = (kpi.total_real_pnl || 0) >= 0 ? 'up' : 'down';
+  const tiles = [
+    { label: '真實投入本金合計', value: fmtMoney(kpi.total_real_principal) },
+    { label: '目前市值合計', value: fmtMoney(kpi.total_real_value) },
+    { label: '真實損益合計', value: fmtMoney(kpi.total_real_pnl), sub: fmtPct(kpi.total_real_return_pct) + '（對真實本金）', dir: returnDir },
+    { label: '累積配息扣抵合計', value: fmtMoney(kpi.total_ex_dividends), sub: '官方成本因此被拉低的金額' },
+  ];
+  tiles.forEach(t => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.innerHTML = '<div class="label"></div><div class="value"></div>' + (t.sub ? '<div class="sub"></div>' : '');
+    tile.querySelector('.label').textContent = t.label;
+    tile.querySelector('.value').textContent = t.value;
+    if (t.sub) {
+      const s = tile.querySelector('.sub');
+      s.textContent = t.sub;
+      if (t.dir) s.classList.add(t.dir);
+    }
+    kpiRow.appendChild(tile);
+  });
+
+  const listEl = document.getElementById('etf-list');
+  const rows = DATA.table_rows || [];
+  if (!rows.length) {
+    listEl.innerHTML = '<div class="empty">目前沒有資料，請先執行 fetch_etf_cost_basis.py 跟 build_etf_cost_data.py</div>';
+  } else {
+    const maxScale = Math.max(...rows.map(r => Math.max(r.real_principal || 0, r.real_value || 0)), 1);
+    rows.forEach(r => {
+      const pnlDir = (r.real_pnl || 0) >= 0 ? 'up' : 'down';
+      const officialPnlDir = (r.official_pnl || 0) >= 0 ? 'up' : 'down';
+      const item = document.createElement('details');
+      item.className = 'acc-item';
+      const principalPct = Math.max((r.real_principal || 0) / maxScale * 100, 1);
+      const valuePct = Math.max((r.real_value || 0) / maxScale * 100, 1);
+      item.innerHTML = `
+        <summary class="acc-btn">
+          <span class="name">${r.name}</span>
+          <span class="code">${r.code}</span>
+          <span class="pct ${pnlDir}">${fmtPct(r.real_return_pct)}</span>
+          <span class="pnl ${pnlDir}">${fmtMoney(r.real_pnl)}</span>
+          <span class="arrow">›</span>
+        </summary>
+        <div class="bar-wrap">
+          <div class="bar-row">
+            <span class="bar-label">真實本金</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${principalPct}%;background:var(--text-muted)"></div></div>
+            <span class="bar-value">${fmtMoney(r.real_principal)}</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">目前市值</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${valuePct}%;background:var(--${pnlDir === 'up' ? 'gain' : 'loss'})"></div></div>
+            <span class="bar-value">${fmtMoney(r.real_value)}</span>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-field"><div class="f-label">持有股數</div><div class="f-value">${r.shares != null ? r.shares.toLocaleString('en-US') : '—'}</div></div>
+          <div class="detail-field"><div class="f-label">最早買進日</div><div class="f-value">${r.earliest_buy_date || '—'}</div></div>
+          <div class="detail-field"><div class="f-label">買進批次數</div><div class="f-value">${r.batch_count != null ? r.batch_count + ' 批' : '—'}</div></div>
+          <div class="detail-field"><div class="f-label">累積配息扣抵</div><div class="f-value">${fmtMoney(r.cumulative_ex_dividends)}</div></div>
+          <div class="detail-field"><div class="f-label">真實損益</div><div class="f-value ${pnlDir}">${fmtMoney(r.real_pnl)}</div></div>
+          <div class="detail-field"><div class="f-label">真實報酬率</div><div class="f-value ${pnlDir}">${fmtPct(r.real_return_pct)}</div></div>
+          <div class="detail-field"><div class="f-label">官方顯示成本</div><div class="f-value">${fmtMoney(r.official_cost)}</div></div>
+          <div class="detail-field"><div class="f-label">官方顯示損益</div><div class="f-value ${officialPnlDir}">${fmtMoney(r.official_pnl)}</div></div>
+        </div>
+      `;
+      listEl.appendChild(item);
+    });
+  }
+
+  document.getElementById('footnote').innerHTML =
+    '真實本金：把每一批買進當下的原始成交金額加總，是固定不變的歷史紀錄，不會因為之後配息被拉低。' +
+    '官方成本/損益：永豐系統「成本均價」算出來的數字，月配息ETF常見的「收益平準金」會讓這個成本隨時間往下調整。' +
+    '目前市值算法跟「單日持股明細」同一套（付出成本+損益試算反推，含稅口徑），不是現價×股數。' +
+    (DATA.log_last_run_at ? ('批次資料最後更新：' + DATA.log_last_run_at) : '');
+})();
+</script>
+
+</body>
+</html>
