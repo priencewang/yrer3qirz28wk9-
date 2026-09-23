@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>單日持股明細</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1:   #fcfcfb;
+    --page-plane:  #f9f9f7;
+    --text-primary:#0b0b0b;
+    --text-secondary:#52514e;
+    --text-muted:  #898781;
+    --gridline:    #e1e0d9;
+    --baseline:    #c3c2b7;
+    --border:      rgba(11,11,11,0.10);
+    --accent:      #2a78d6;
+    --gain:        #e34948; /* 台股慣例：紅=漲/賺 */
+    --loss:        #2a78d6; /* 台股慣例：藍=跌/賠 */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .viz-root {
+      color-scheme: dark;
+      --surface-1:   #1a1a19;
+      --page-plane:  #0d0d0d;
+      --text-primary:#ffffff;
+      --text-secondary:#c3c2b7;
+      --text-muted:  #898781;
+      --gridline:    #2c2c2a;
+      --baseline:    #383835;
+      --border:      rgba(255,255,255,0.10);
+      --accent:      #3987e5;
+      --gain:        #e66767;
+      --loss:        #3987e5;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:   #1a1a19;
+    --page-plane:  #0d0d0d;
+    --text-primary:#ffffff;
+    --text-secondary:#c3c2b7;
+    --text-muted:  #898781;
+    --gridline:    #2c2c2a;
+    --baseline:    #383835;
+    --border:      rgba(255,255,255,0.10);
+    --accent:      #3987e5;
+    --gain:        #e66767;
+    --loss:        #3987e5;
+  }
+
+  .viz-root {
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100%;
+    padding: 28px 20px 60px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  .hdr { margin-bottom: 22px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .hdr h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+  .hdr p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+  .hdr .history-link { font-size: 12.5px; color: var(--accent); text-decoration: none; white-space: nowrap; padding-top: 4px; }
+  .hdr .history-link:hover { text-decoration: underline; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 720px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .tile .value { font-size: 22px; font-weight: 700; line-height: 1.2; }
+  .tile .delta { font-size: 12.5px; margin-top: 4px; font-weight: 600; }
+  .tile .delta.up { color: var(--gain); }
+  .tile .delta.down { color: var(--loss); }
+  .tile .delta.flat { color: var(--text-muted); }
+
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 2px; }
+  .card .sub { font-size: 12px; color: var(--text-secondary); margin: 0 0 14px; }
+
+  .basis-toggle { display: inline-flex; gap: 4px; background: var(--gridline); padding: 3px; border-radius: 8px; margin-bottom: 14px; }
+  .basis-btn { font-family: inherit; font-size: 12.5px; border: none; background: transparent; color: var(--text-secondary); padding: 6px 13px; border-radius: 6px; cursor: pointer; }
+  .basis-btn.is-active { background: var(--surface-1); color: var(--text-primary); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .basis-btn:hover:not(.is-active) { color: var(--text-primary); }
+  .basis-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .pie-layout { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+  .pie-svg-wrap { flex-shrink: 0; }
+  .pie-selected-info { min-width: 130px; flex-shrink: 0; }
+  .pie-selected-info .psi-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .pie-selected-info .psi-value { font-size: 21px; font-weight: 700; line-height: 1.25; }
+  .pie-legend { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 3px; }
+  .pie-legend-row {
+    display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer;
+    padding: 5px 7px; border-radius: 6px; margin: -5px -7px; transition: background .12s;
+  }
+  .pie-legend-row:hover { background: var(--gridline); }
+  .pie-legend-row.is-selected { background: var(--gridline); font-weight: 700; }
+  .pie-legend-row .sw { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .pie-legend-row .name { flex: 1; color: var(--text-secondary); }
+  .pie-legend-row.is-selected .name { color: var(--text-primary); }
+  .pie-legend-row .pct { font-weight: 700; font-variant-numeric: tabular-nums; }
+  svg text { font-family: inherit; }
+  .pie-slice { cursor: pointer; transition: opacity .15s, transform .15s; transform-box: fill-box; transform-origin: center; }
+
+  .acc-item { border: 1px solid var(--border); border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
+  .acc-item .acc-item { border: none; border-top: 1px solid var(--gridline); border-radius: 0; margin-bottom: 0; }
+  .acc-btn {
+    width: 100%; display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+    background: var(--page-plane); border: none; cursor: pointer; font-family: inherit; text-align: left;
+    -webkit-appearance: none; list-style: none;
+  }
+  .acc-btn::-webkit-details-marker { display: none; }
+  .acc-btn::marker { content: ""; }
+  .acc-btn .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+  .acc-btn .name { font-weight: 700; font-size: 14px; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .acc-btn .quick-val { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13.5px; flex-shrink: 0; }
+  .acc-btn .count { color: var(--text-muted); font-size: 11.5px; flex-shrink: 0; }
+  .acc-btn .delta-badge { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; white-space: nowrap; }
+  .acc-btn .delta-badge.up { color: var(--gain); }
+  .acc-btn .delta-badge.down { color: var(--loss); }
+  .acc-btn .delta-badge.flat { color: var(--text-muted); }
+  .acc-btn .arrow { color: var(--text-muted); transition: transform .15s; flex-shrink: 0; }
+  details[open] > .acc-btn .arrow { transform: rotate(90deg); }
+  .acc-btn:hover { background: var(--gridline); }
+  .acc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .acc-item .acc-item .acc-btn { padding: 9px 14px 9px 30px; }
+  .acc-item .acc-item .acc-btn .name { font-size: 13px; font-weight: 600; }
+  .acc-sublist { background: var(--gridline); }
+  .acc-sublist .acc-item .acc-btn { background: var(--surface-1); }
+  .acc-sublist .acc-item .acc-btn:hover { background: var(--page-plane); }
+
+  .detail-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1px;
+    background: var(--gridline); border-top: 1px solid var(--gridline);
+  }
+  .detail-field { background: var(--surface-1); padding: 10px 14px; }
+  .detail-field .f-label { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+  .detail-field .f-value { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .detail-field .f-value.pnl-up { color: var(--gain); }
+  .detail-field .f-value.pnl-down { color: var(--loss); }
+
+  .empty-hint { text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px 0; }
+
+  .footnote { font-size: 11.5px; color: var(--text-muted); line-height: 1.7; margin-top: 22px; border-top: 1px solid var(--gridline); padding-top: 14px; }
+</style>
+</head>
+<body>
+
+<div class="viz-root">
+  <div class="wrap">
+    <div class="hdr">
+      <div>
+        <h1>單日持股明細</h1>
+        <p id="hdr-sub"></p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        <a class="history-link" href="../history.html">查看歷史報告 ›</a>
+        <a class="history-link" href="etf-cost.html">ETF真實成本 ›</a>
+      </div>
+    </div>
+
+    <div class="kpi-row" id="kpi-row"></div>
+
+    <div class="card">
+      <h2>1 · 產業配置佔比</h2>
+      <p class="sub">Excel全部11種產業分類完整顯示，顏色對應每日庫存報告同一套色票</p>
+      <div class="basis-toggle" id="pie-toggle">
+        <button class="basis-btn is-active" data-basis="value">市值佔比</button>
+        <button class="basis-btn" data-basis="cost">成本佔比</button>
+      </div>
+      <div class="pie-layout">
+        <div class="pie-svg-wrap" id="pie-svg-wrap"></div>
+        <div class="pie-selected-info" id="pie-selected-info"></div>
+        <div class="pie-legend" id="pie-legend"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>2 · 完整持股明細</h2>
+      <p class="sub">點產業分類展開持股，點股票名稱再展開完整欄位</p>
+      <div class="basis-toggle" id="metric-toggle">
+        <button class="basis-btn is-active" data-metric="pnl">損益</button>
+        <button class="basis-btn" data-metric="value">市值</button>
+        <button class="basis-btn" data-metric="cost_total">成本</button>
+      </div>
+      <div id="category-list"></div>
+    </div>
+
+    <div class="footnote" id="footnote"></div>
+  </div>
+</div>
+
+<script type="application/json" id="snapshot-data">
+{"date": "2026-09-23", "source_file": "每日庫存20260923.xlsx", "kpi": {"total_value": 8497304, "total_cost": 8118602, "total_pnl": 378702, "stock_count": 58, "total_value_change": 47472, "total_cost_change": 0, "stock_count_change": 0}, "pie_categories": ["半導體 / 先進製程設備與晶圓代工", "核心戰略 (ABF載板四雄)", "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "半導體記憶體 / 基礎晶圓代工與封測", "CPO 光通訊 / 矽光子網通設備", "AI 伺服器水冷液冷散熱", "先進封裝新題材 / 玻璃基板 (TGV)", "電子核心關鍵組件 / 石英元件", "核心成熟製程 / 被動與電子組件", "資通訊與半導體基礎建設 / 水利工程", "ETF 核心配置（不與個股混編）"], "pie_colors": ["#9DC3E6", "#FFD966", "#C6A0DC", "#7FD1C1", "#F4A6C0", "#C9D96B", "#F8B26A", "#B3B3E6", "#D9B38C", "#8ACBE0", "#BFBFBF"], "pie_value": {"半導體 / 先進製程設備與晶圓代工": 15.34, "核心戰略 (ABF載板四雄)": 14.78, "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板": 7.98, "半導體記憶體 / 基礎晶圓代工與封測": 7.14, "CPO 光通訊 / 矽光子網通設備": 6.51, "AI 伺服器水冷液冷散熱": 0.93, "先進封裝新題材 / 玻璃基板 (TGV)": 1.53, "電子核心關鍵組件 / 石英元件": 0.27, "核心成熟製程 / 被動與電子組件": 4.37, "資通訊與半導體基礎建設 / 水利工程": 3.07, "ETF 核心配置（不與個股混編）": 38.09}, "pie_cost": {"半導體 / 先進製程設備與晶圓代工": 13.51, "核心戰略 (ABF載板四雄)": 15.69, "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板": 9.11, "半導體記憶體 / 基礎晶圓代工與封測": 8.48, "CPO 光通訊 / 矽光子網通設備": 7.87, "AI 伺服器水冷液冷散熱": 1.63, "先進封裝新題材 / 玻璃基板 (TGV)": 2.09, "電子核心關鍵組件 / 石英元件": 0.39, "核心成熟製程 / 被動與電子組件": 6.61, "資通訊與半導體基礎建設 / 水利工程": 3.65, "ETF 核心配置（不與個股混編）": 30.97}, "table_rows": [{"code": "009816", "name": "凱基台灣TOP50", "industry": "ETF 核心配置（不與個股混編）", "shares": 60000, "price": 16.6, "cost_avg": 10.58, "cost_total": 634800, "pnl": 358986, "value": 993786, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 4788, "industry_pnl_change": 26689}, {"code": "2330", "name": "台積電", "industry": "半導體 / 先進製程設備與晶圓代工", "shares": 300, "price": 2500, "cost_avg": 1466.28, "cost_total": 439884, "pnl": 306800, "value": 746684, "industry_cost": 1096932, "industry_ratio": 13.51, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 11946, "industry_pnl_change": 5157}, {"code": "00830", "name": "國泰費城半導體", "industry": "ETF 核心配置（不與個股混編）", "shares": 8000, "price": 88.6, "cost_avg": 57.39, "cost_total": 459120, "pnl": 247986, "value": 707106, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 16360, "industry_pnl_change": 26689}, {"code": "00964", "name": "中信亞太高股息", "industry": "ETF 核心配置（不與個股混編）", "shares": 15000, "price": 14.75, "cost_avg": 11.84, "cost_total": 177600, "pnl": 43115, "value": 220715, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1198, "industry_pnl_change": 26689}, {"code": "00685L", "name": "群益臺灣加權正2", "industry": "ETF 核心配置（不與個股混編）", "shares": 13000, "price": 12.89, "cost_avg": 11.02, "cost_total": 143260, "pnl": 23912, "value": 167172, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 1555, "industry_pnl_change": 26689}, {"code": "00924", "name": "復華S&P500成長", "industry": "ETF 核心配置（不與個股混編）", "shares": 8000, "price": 33.88, "cost_avg": 30.9, "cost_total": 247200, "pnl": 23152, "value": 270352, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 478, "industry_pnl_change": 26689}, {"code": "3037", "name": "欣興", "industry": "核心戰略 (ABF載板四雄)", "shares": 284, "price": 1160, "cost_avg": 1084.46, "cost_total": 307987, "pnl": 19998, "value": 327985, "industry_cost": 1273897, "industry_ratio": 15.69, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 11308, "industry_pnl_change": 12107}, {"code": "00935", "name": "野村臺灣新科技50", "industry": "ETF 核心配置（不與個股混編）", "shares": 4000, "price": 61.45, "cost_avg": 57.15, "cost_total": 228600, "pnl": 16594, "value": 245194, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 1792, "industry_pnl_change": 26689}, {"code": "009802", "name": "富邦旗艦50", "industry": "ETF 核心配置（不與個股混編）", "shares": 7000, "price": 20.14, "cost_avg": 18.83, "cost_total": 131810, "pnl": 8810, "value": 140620, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -210, "industry_pnl_change": 26689}, {"code": "3189", "name": "景碩", "industry": "核心戰略 (ABF載板四雄)", "shares": 342, "price": 906, "cost_avg": 888.85, "cost_total": 303987, "pnl": 4500, "value": 308487, "industry_cost": 1273897, "industry_ratio": 15.69, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1022, "industry_pnl_change": 12107}, {"code": "00407A", "name": "主動凱基台灣", "industry": "ETF 核心配置（不與個股混編）", "shares": 10000, "price": 10.12, "cost_avg": 9.87, "cost_total": 98700, "pnl": 2215, "value": 100915, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 798, "industry_pnl_change": 26689}, {"code": "00631L", "name": "元大台灣50正2", "industry": "ETF 核心配置（不與個股混編）", "shares": 3000, "price": 38.99, "cost_avg": 38.68, "cost_total": 116040, "pnl": 663, "value": 116703, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 1407, "industry_pnl_change": 26689}, {"code": "3324", "name": "雙鴻", "industry": "AI 伺服器水冷液冷散熱", "shares": 1, "price": 1595, "cost_avg": 1165, "cost_total": 1165, "pnl": 424, "value": 1589, "industry_cost": 132708, "industry_ratio": 1.63, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5, "industry_pnl_change": -162}, {"code": "00402A", "name": "主動安聯美國科技", "industry": "ETF 核心配置（不與個股混編）", "shares": 7000, "price": 10.08, "cost_avg": 10, "cost_total": 70000, "pnl": 390, "value": 70390, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 559, "industry_pnl_change": 26689}, {"code": "1815", "name": "富喬", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 1, "price": 120, "cost_avg": 123, "cost_total": 123, "pnl": -4, "value": 119, "industry_cost": 739399, "industry_ratio": 9.11, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2, "industry_pnl_change": 16660}, {"code": "4971", "name": "IET-KY", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 1, "price": 545, "cost_avg": 600, "cost_total": 600, "pnl": -57, "value": 543, "industry_cost": 638724, "industry_ratio": 7.87, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -23, "industry_pnl_change": -15638}, {"code": "2303", "name": "聯電", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 796, "price": 160, "cost_avg": 159.59, "cost_total": 127034, "pnl": -238, "value": 126796, "industry_cost": 688732, "industry_ratio": 8.48, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": null, "industry_pnl_change": 418}, {"code": "8936", "name": "國統", "industry": "資通訊與半導體基礎建設 / 水利工程", "shares": 200, "price": 52, "cost_avg": 53.18, "cost_total": 10636, "pnl": -280, "value": 10356, "industry_cost": 296020, "industry_ratio": 3.65, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": null, "industry_pnl_change": 5540}, {"code": "6213", "name": "聯茂", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 141, "price": 541, "cost_avg": 542.96, "cost_total": 76557, "pnl": -612, "value": 75945, "industry_cost": 739399, "industry_ratio": 9.11, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -280, "industry_pnl_change": 16660}, {"code": "2308", "name": "台達電", "industry": "資通訊與半導體基礎建設 / 水利工程", "shares": 30, "price": 1900, "cost_avg": 1942.73, "cost_total": 58282, "pnl": -1534, "value": 56748, "industry_cost": 296020, "industry_ratio": 3.65, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": null, "industry_pnl_change": 5540}, {"code": "3450", "name": "聯鈞", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 100, "price": 520, "cost_avg": 533.75, "cost_total": 53375, "pnl": -1605, "value": 51770, "industry_cost": 638724, "industry_ratio": 7.87, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -599, "industry_pnl_change": -15638}, {"code": "6488", "name": "環球晶", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 52, "price": 950, "cost_avg": 978.38, "cost_total": 50876, "pnl": -1694, "value": 49182, "industry_cost": 688732, "industry_ratio": 8.48, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1088, "industry_pnl_change": 418}, {"code": "8046", "name": "南電", "industry": "核心戰略 (ABF載板四雄)", "shares": 266, "price": 1210, "cost_avg": 1211.64, "cost_total": 322296, "pnl": -1855, "value": 320441, "industry_cost": 1273897, "industry_ratio": 15.69, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 11918, "industry_pnl_change": 12107}, {"code": "3042", "name": "晶技", "industry": "電子核心關鍵組件 / 石英元件", "shares": 70, "price": 198, "cost_avg": 242.04, "cost_total": 16943, "pnl": -3143, "value": 13800, "industry_cost": 31767, "industry_ratio": 0.39, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 1011, "industry_pnl_change": 1039}, {"code": "3026", "name": "禾伸堂", "industry": "核心成熟製程 / 被動與電子組件", "shares": 75, "price": 768, "cost_avg": 809.15, "cost_total": 60686, "pnl": -3340, "value": 57346, "industry_cost": 536370, "industry_ratio": 6.61, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -896, "industry_pnl_change": -3049}, {"code": "00725B", "name": "國泰投資級公司債", "industry": "ETF 核心配置（不與個股混編）", "shares": 6000, "price": 34, "cost_avg": 34.57, "cost_total": 207420, "pnl": -3712, "value": 203708, "industry_cost": 2514550, "industry_ratio": 30.97, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 360, "industry_pnl_change": 26689}, {"code": "2408", "name": "南亞科", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 158, "price": 515, "cost_avg": 537.65, "cost_total": 84949, "pnl": -3937, "value": 81012, "industry_cost": 688732, "industry_ratio": 8.48, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 2831, "industry_pnl_change": 418}, {"code": "6173", "name": "信昌電", "industry": "核心成熟製程 / 被動與電子組件", "shares": 90, "price": 302.5, "cost_avg": 347.19, "cost_total": 31247, "pnl": -4141, "value": 27106, "industry_cost": 536370, "industry_ratio": 6.61, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -45, "industry_pnl_change": -3049}, {"code": "2344", "name": "華邦電", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 100, "price": 172.5, "cost_avg": 218.3, "cost_total": 21830, "pnl": -4655, "value": 17175, "industry_cost": 688732, "industry_ratio": 8.48, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 150, "industry_pnl_change": 418}, {"code": "8289", "name": "泰藝", "industry": "電子核心關鍵組件 / 石英元件", "shares": 200, "price": 44.45, "cost_avg": 74.12, "cost_total": 14824, "pnl": -5971, "value": 8853, "industry_cost": 31767, "industry_ratio": 0.39, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 28, "industry_pnl_change": 1039}, {"code": "6147", "name": "頎邦", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 220, "price": 214.5, "cost_avg": 241.17, "cost_total": 53057, "pnl": -6072, "value": 46985, "industry_cost": 688732, "industry_ratio": 8.48, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -983, "industry_pnl_change": 418}, {"code": "3673", "name": "TPK-KY", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 300, "price": 64.8, "cost_avg": 84.92, "cost_total": 25476, "pnl": -6122, "value": 19354, "industry_cost": 169503, "industry_ratio": 2.09, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -238, "industry_pnl_change": -1289}, {"code": "8358", "name": "金居", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 382, "price": 497, "cost_avg": 510.95, "cost_total": 195183, "pnl": -6164, "value": 189019, "industry_cost": 739399, "industry_ratio": 9.11, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 2093, "industry_pnl_change": 16660}, {"code": "6207", "name": "雷科", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 150, "price": 114, "cost_avg": 157.62, "cost_total": 23643, "pnl": -6618, "value": 17025, "industry_cost": 169503, "industry_ratio": 2.09, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -225, "industry_pnl_change": -1289}, {"code": "6770", "name": "力積電", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 1000, "price": 73.1, "cost_avg": 79.76, "cost_total": 79760, "pnl": -6982, "value": 72778, "industry_cost": 688732, "industry_ratio": 8.48, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 1295, "industry_pnl_change": 418}, {"code": "2313", "name": "華通", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 150, "price": 224, "cost_avg": 273.99, "cost_total": 41098, "pnl": -7646, "value": 33452, "industry_cost": 739399, "industry_ratio": 9.11, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 299, "industry_pnl_change": 16660}, {"code": "4979", "name": "華星光", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 351, "price": 590, "cost_avg": 609.51, "cost_total": 213938, "pnl": -7761, "value": 206177, "industry_cost": 638724, "industry_ratio": 7.87, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5243, "industry_pnl_change": -15638}, {"code": "8021", "name": "尖點", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 365, "price": 478, "cost_avg": 498.61, "cost_total": 181993, "pnl": -8288, "value": 173705, "industry_cost": 739399, "industry_ratio": 9.11, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 363, "industry_pnl_change": 16660}, {"code": "2368", "name": "金像電", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 145, "price": 1140, "cost_avg": 1197.55, "cost_total": 173645, "pnl": -9072, "value": 164573, "industry_cost": 739399, "industry_ratio": 9.11, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 14437, "industry_pnl_change": 16660}, {"code": "4991", "name": "環宇-KY", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 100, "price": 447.5, "cost_avg": 547.77, "cost_total": 54777, "pnl": -10224, "value": 44553, "industry_cost": 638724, "industry_ratio": 7.87, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2539, "industry_pnl_change": -15638}, {"code": "6182", "name": "合晶", "industry": "核心成熟製程 / 被動與電子組件", "shares": 400, "price": 115.5, "cost_avg": 141.7, "cost_total": 56680, "pnl": -10682, "value": 45998, "industry_cost": 536370, "industry_ratio": 6.61, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1394, "industry_pnl_change": -3049}, {"code": "3149", "name": "正達", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 300, "price": 63.2, "cost_avg": 101.81, "cost_total": 30543, "pnl": -11665, "value": 18878, "industry_cost": 169503, "industry_ratio": 2.09, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -269, "industry_pnl_change": -1289}, {"code": "4908", "name": "前鼎", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 359, "price": 210, "cost_avg": 251.66, "cost_total": 90346, "pnl": -15287, "value": 75059, "industry_cost": 638724, "industry_ratio": 7.87, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4467, "industry_pnl_change": -15638}, {"code": "8064", "name": "東捷", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 562, "price": 133, "cost_avg": 159.86, "cost_total": 89841, "pnl": -15424, "value": 74417, "industry_cost": 169503, "industry_ratio": 2.09, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -557, "industry_pnl_change": -1289}, {"code": "2492", "name": "華新科", "industry": "核心成熟製程 / 被動與電子組件", "shares": 258, "price": 306, "cost_avg": 371.12, "cost_total": 95749, "pnl": -17149, "value": 78600, "industry_cost": 536370, "industry_ratio": 6.61, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1284, "industry_pnl_change": -3049}, {"code": "3483", "name": "力致", "industry": "AI 伺服器水冷液冷散熱", "shares": 350, "price": 76.6, "cost_avg": 126.67, "cost_total": 44334, "pnl": -17641, "value": 26693, "industry_cost": 132708, "industry_ratio": 1.63, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -454, "industry_pnl_change": -162}, {"code": "4977", "name": "眾達-KY", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 576, "price": 166.5, "cost_avg": 202.35, "cost_total": 116554, "pnl": -21068, "value": 95486, "industry_cost": 638724, "industry_ratio": 7.87, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2292, "industry_pnl_change": -15638}, {"code": "6239", "name": "力成", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 454, "price": 286.5, "cost_avg": 347.62, "cost_total": 157819, "pnl": -28318, "value": 129501, "industry_cost": 688732, "industry_ratio": 8.48, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2485, "industry_pnl_change": 418}, {"code": "2367", "name": "燿華", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 1000, "price": 41.7, "cost_avg": 70.8, "cost_total": 70800, "pnl": -29285, "value": 41515, "industry_cost": 739399, "industry_ratio": 9.11, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -250, "industry_pnl_change": 16660}, {"code": "3163", "name": "波若威", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 120, "price": 663, "cost_avg": 909.45, "cost_total": 109134, "pnl": -29922, "value": 79212, "industry_cost": 638724, "industry_ratio": 7.87, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -475, "industry_pnl_change": -15638}, {"code": "2327", "name": "國巨*", "industry": "核心成熟製程 / 被動與電子組件", "shares": 285, "price": 573, "cost_avg": 675.67, "cost_total": 192566, "pnl": -29977, "value": 162589, "industry_cost": 536370, "industry_ratio": 6.61, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 570, "industry_pnl_change": -3049}, {"code": "2337", "name": "旺宏", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 700, "price": 119, "cost_avg": 162.01, "cost_total": 113407, "pnl": -30476, "value": 82931, "industry_cost": 688732, "industry_ratio": 8.48, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 698, "industry_pnl_change": 418}, {"code": "6139", "name": "亞翔", "industry": "資通訊與半導體基礎建設 / 水利工程", "shares": 265, "price": 736, "cost_avg": 856.99, "cost_total": 227102, "pnl": -32919, "value": 194183, "industry_cost": 296020, "industry_ratio": 3.65, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 5540, "industry_pnl_change": 5540}, {"code": "6831", "name": "邁科", "industry": "AI 伺服器水冷液冷散熱", "shares": 99, "price": 515, "cost_avg": 880.9, "cost_total": 87209, "pnl": -36447, "value": 50762, "industry_cost": 132708, "industry_ratio": 1.63, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": 297, "industry_pnl_change": -162}, {"code": "4958", "name": "臻鼎-KY", "industry": "核心戰略 (ABF載板四雄)", "shares": 634, "price": 473, "cost_avg": 535.69, "cost_total": 339627, "pnl": -41063, "value": 298564, "industry_cost": 1273897, "industry_ratio": 15.69, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -10097, "industry_pnl_change": 12107}, {"code": "6187", "name": "萬潤", "industry": "半導體 / 先進製程設備與晶圓代工", "shares": 292, "price": 1205, "cost_avg": 1340.94, "cost_total": 391554, "pnl": -41246, "value": 350308, "industry_cost": 1096932, "industry_ratio": 13.51, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2908, "industry_pnl_change": 5157}, {"code": "3583", "name": "辛耘", "industry": "半導體 / 先進製程設備與晶圓代工", "shares": 300, "price": 691, "cost_avg": 884.98, "cost_total": 265494, "pnl": -59106, "value": 206388, "industry_cost": 1096932, "industry_ratio": 13.51, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3881, "industry_pnl_change": 5157}, {"code": "6806", "name": "森葳能源", "industry": "核心成熟製程 / 被動與電子組件", "shares": 671, "price": 0, "cost_avg": 148.2, "cost_total": 99442, "pnl": -99441, "value": 1, "industry_cost": 536370, "industry_ratio": 6.61, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": null, "industry_pnl_change": -3049}], "excluded": []}
+</script>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('snapshot-data').textContent);
+  const cs = getComputedStyle(document.querySelector('.viz-root'));
+  const tok = (name) => cs.getPropertyValue(name).trim();
+  const fmtMoney = (n) => n === null || n === undefined ? '—' : '$' + Math.round(n).toLocaleString('en-US');
+  const fmtNum = (n, d) => n === null || n === undefined ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: d === undefined ? 0 : d, minimumFractionDigits: d === undefined ? 0 : d });
+  const fmtPct = (n, d) => n === null || n === undefined ? '—' : (n > 0 ? '+' : '') + n.toFixed(d === undefined ? 1 : d) + '%';
+  // 2026/09/16新增：手風琴收合狀態旁邊的「較昨日」小徽章，把N損益變化/O產業損益變化
+  // 從第三層完整明細往上提，不用展開到最裡面就看得到方向跟金額。null/undefined代表
+  // 沒有昨天的資料可比對(例如第一天)，不顯示徽章；剛好=0顯示中性樣式，不套紅藍箭頭。
+  function deltaBadgeHtml(v) {
+    if (v === null || v === undefined) return '';
+    if (v === 0) return '<span class="delta-badge flat">±$0</span>';
+    const dir = v > 0 ? 'up' : 'down';
+    const arrow = v > 0 ? '▲' : '▼';
+    return '<span class="delta-badge ' + dir + '">' + arrow + fmtMoney(Math.abs(v)) + '</span>';
+  }
+  // 2026/09/16新增：KPI卡片(總市值/總成本)底下的變化文字，跟deltaBadgeHtml同一套
+  // 箭頭+紅藍配色邏輯，只是外層容器是.tile .delta而不是.delta-badge，格式跟著沿用。
+  // (2026/09/17拿掉「（較昨日）」字樣，RAY覺得贅字，箭頭+金額已經夠清楚)
+  function tileDelta(v) {
+    if (v === null || v === undefined) return null;
+    if (v === 0) return { text: '±$0', dir: 'flat' };
+    const dir = v > 0 ? 'up' : 'down';
+    const arrow = v > 0 ? '▲' : '▼';
+    return { text: arrow + fmtMoney(Math.abs(v)), dir };
+  }
+  // 2026/09/17新增：持股檔數旁邊的「較昨日」增減，跟tileDelta同一套邏輯，只是單位是
+  // 「檔」不是金額，不能共用fmtMoney。
+  function tileCountDelta(v) {
+    if (v === null || v === undefined) return null;
+    if (v === 0) return { text: '±0 檔', dir: 'flat' };
+    const dir = v > 0 ? 'up' : 'down';
+    const arrow = v > 0 ? '▲' : '▼';
+    return { text: arrow + Math.abs(v) + ' 檔', dir };
+  }
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const svgEl = (tag, attrs) => { const el = document.createElementNS(SVGNS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; };
+
+  document.getElementById('hdr-sub').textContent =
+    '特許專戶．' + DATA.date + '（來源：' + DATA.source_file + '）';
+
+  // ---------- KPI ----------
+  const kpi = DATA.kpi;
+  const pnlPct = kpi.total_cost ? (kpi.total_pnl / kpi.total_cost) * 100 : 0;
+  const valueDelta = tileDelta(kpi.total_value_change);
+  const costDelta = tileDelta(kpi.total_cost_change);
+  const countDelta = tileCountDelta(kpi.stock_count_change);
+  const tiles = [
+    { label: '總市值', value: fmtMoney(kpi.total_value), delta: valueDelta ? valueDelta.text : null, dir: valueDelta ? valueDelta.dir : null },
+    { label: '總成本', value: fmtMoney(kpi.total_cost), delta: costDelta ? costDelta.text : null, dir: costDelta ? costDelta.dir : null },
+    { label: '未實現損益', value: fmtMoney(kpi.total_pnl), delta: fmtPct(pnlPct) + '（對成本）', dir: kpi.total_pnl >= 0 ? 'up' : 'down' },
+    { label: '持股檔數', value: kpi.stock_count + ' 檔', delta: countDelta ? countDelta.text : null, dir: countDelta ? countDelta.dir : null },
+  ];
+  const kpiRow = document.getElementById('kpi-row');
+  tiles.forEach(t => {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.innerHTML = '<div class="label"></div><div class="value"></div>' + (t.delta ? '<div class="delta"></div>' : '');
+    tile.querySelector('.label').textContent = t.label;
+    tile.querySelector('.value').textContent = t.value;
+    if (t.delta) { const d = tile.querySelector('.delta'); d.textContent = t.delta; d.classList.add(t.dir); }
+    kpiRow.appendChild(tile);
+  });
+
+  // ---------- Pie chart ----------
+  // 2026/09/11改版：RAY要求Excel裡11種產業分類全部完整顯示、不要折成「其他」，顏色直接
+  // 沿用DATA.pie_colors(跟fetch_holdings_shioaji.py「每日庫存」Excel報告同一組11色
+  // 莫蘭迪色票，資料準備階段(build_daily_snapshot_data.py)已經算好，不用再靠CSS token)。
+  function textColorFor(bgHex) {
+    // 莫蘭迪色票偏淺色，固定用白字在淺底上會看不清楚，跟其他頁面同一套亮度反推邏輯
+    const hex = bgHex.replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16), g = parseInt(hex.slice(2, 4), 16), b = parseInt(hex.slice(4, 6), 16);
+    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+    return luminance < 140 ? '#ffffff' : '#2a2a28';
+  }
+  let selectedSliceIndex = null; // 2026/09/11新增：點圖例/切片高亮聯動用，切換市值/成本時歸零
+
+  function renderPie(basis) {
+    const wrap = document.getElementById('pie-svg-wrap');
+    const legend = document.getElementById('pie-legend');
+    const infoEl = document.getElementById('pie-selected-info');
+    wrap.innerHTML = ''; legend.innerHTML = ''; infoEl.innerHTML = '';
+    const dataMap = basis === 'cost' ? DATA.pie_cost : DATA.pie_value;
+    const cats = DATA.pie_categories;
+    const pieColors = DATA.pie_colors;
+    const slices = {}; // 用原始類別索引(i)當key，不是畫圖順序，顏色/選取狀態才不會錯亂
+    // 2026/09/17新增：RAY要求圓餅圖跟圖例依百分比由高到低排列(原本是固定依產業編號
+    // 1~11排序)。顏色仍然固定跟著原始類別索引(i)走，不會因為排序換位置就換色——
+    // 「畫的順序」變了，但「這個類別永遠是這個顏色」的CVD安全規則沒有變。
+    const order = cats.map((c, i) => i).sort((a, b) => (dataMap[cats[b]] || 0) - (dataMap[cats[a]] || 0));
+
+    // 2026/09/16新增：點切片/圖例時，右側空白區顯示該產業的實際金額(不是百分比)——
+    // 成本佔比模式顯示這個產業總共投入多少成本，市值佔比模式顯示目前市值多少。
+    // 直接從table_rows加總(跟區塊2「完整持股明細」同樣的算法)，不用百分比反推、避免
+    // 四捨五入誤差。
+    const categoryAbsTotal = {};
+    cats.forEach(c => {
+      categoryAbsTotal[c] = DATA.table_rows
+        .filter(r => r.industry === c)
+        .reduce((s, r) => s + (basis === 'cost' ? (r.cost_total || 0) : (r.value || 0)), 0);
+    });
+
+    const size = 240, r = 95, rInner = 56, cx = size / 2, cy = size / 2;
+    const svg = svgEl('svg', { viewBox: '0 0 ' + size + ' ' + size, width: size, height: size, style: 'overflow:visible' });
+    let angle = -Math.PI / 2;
+    const total = cats.reduce((s, c) => s + (dataMap[c] || 0), 0) || 100;
+    order.forEach(i => {
+      const c = cats[i];
+      const v = dataMap[c] || 0;
+      const frac = v / total;
+      const a0 = angle, a1 = angle + frac * Math.PI * 2;
+      angle = a1;
+      const large = (a1 - a0) > Math.PI ? 1 : 0;
+      const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+      const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      const xi0 = cx + rInner * Math.cos(a1), yi0 = cy + rInner * Math.sin(a1);
+      const xi1 = cx + rInner * Math.cos(a0), yi1 = cy + rInner * Math.sin(a0);
+      const d = 'M' + x0 + ',' + y0 + ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + x1 + ',' + y1 +
+        ' L' + xi0 + ',' + yi0 + ' A' + rInner + ',' + rInner + ' 0 ' + large + ' 0 ' + xi1 + ',' + yi1 + ' Z';
+      const path = svgEl('path', { d, fill: pieColors[i], stroke: tok('--surface-1'), 'stroke-width': 2, class: 'pie-slice' });
+      const title = document.createElementNS(SVGNS, 'title');
+      title.textContent = c + '：' + v.toFixed(1) + '%';
+      path.appendChild(title);
+      path.addEventListener('click', () => selectSlice(i));
+      svg.appendChild(path);
+      slices[i] = { path, midAngle: (a0 + a1) / 2 };
+      // direct label for slices >= 5%(11類之後平均一塊約9%，門檻跟著調低一點，太小的
+      // 塊(例如0.3%)標了也塞不下、字會重疊，留給圖例+tooltip承接就好)
+      if (frac >= 0.05) {
+        const mid = (a0 + a1) / 2;
+        const lx = cx + (r + rInner) / 2 * Math.cos(mid);
+        const ly = cy + (r + rInner) / 2 * Math.sin(mid);
+        const t = svgEl('text', { x: lx, y: ly + 4, 'text-anchor': 'middle', 'font-size': '11.5', 'font-weight': '700', fill: textColorFor(pieColors[i]), style: 'pointer-events:none' });
+        t.textContent = v.toFixed(0) + '%';
+        svg.appendChild(t);
+      }
+    });
+    // center label
+    const centerLabel = svgEl('text', { x: cx, y: cy - 3, 'text-anchor': 'middle', 'font-size': '11', fill: tok('--text-muted') });
+    centerLabel.textContent = basis === 'cost' ? '成本佔比' : '市值佔比';
+    svg.appendChild(centerLabel);
+    const centerDate = svgEl('text', { x: cx, y: cy + 13, 'text-anchor': 'middle', 'font-size': '11', 'font-weight': '700', fill: tok('--text-primary') });
+    centerDate.textContent = DATA.date;
+    svg.appendChild(centerDate);
+    wrap.appendChild(svg);
+
+    order.forEach(i => {
+      const c = cats[i];
+      const row = document.createElement('div');
+      row.className = 'pie-legend-row';
+      row.dataset.index = i;
+      row.innerHTML = '<span class="sw"></span><span class="name"></span><span class="pct"></span>';
+      row.querySelector('.sw').style.background = pieColors[i];
+      row.querySelector('.name').textContent = c;
+      row.querySelector('.pct').textContent = (dataMap[c] || 0).toFixed(1) + '%';
+      row.addEventListener('click', () => selectSlice(i));
+      legend.appendChild(row);
+    });
+
+    // 2026/09/11新增：點圖例或圓餅圖切片，選中的那塊往外推出+其餘變暗，方便RAY一眼
+    // 對出「這塊」對應哪個產業；再點一次同一塊(或已經沒有選取)則全部恢復正常。
+    function selectSlice(i) {
+      selectedSliceIndex = selectedSliceIndex === i ? null : i;
+      if (selectedSliceIndex === null) {
+        infoEl.innerHTML = '';
+      } else {
+        const cat = cats[selectedSliceIndex];
+        infoEl.innerHTML = '<div class="psi-label"></div><div class="psi-value"></div>';
+        infoEl.querySelector('.psi-label').textContent = cat + (basis === 'cost' ? '　投入成本' : '　目前市值');
+        infoEl.querySelector('.psi-value').textContent = fmtMoney(categoryAbsTotal[cat]);
+      }
+      order.forEach(idx => {
+        const s = slices[idx];
+        const isSel = selectedSliceIndex === idx;
+        const dim = selectedSliceIndex !== null && !isSel;
+        s.path.style.opacity = dim ? '0.35' : '1';
+        s.path.style.strokeWidth = isSel ? '3' : '2';
+        if (isSel) {
+          const dx = Math.cos(s.midAngle) * 9, dy = Math.sin(s.midAngle) * 9;
+          s.path.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+        } else {
+          s.path.style.transform = '';
+        }
+      });
+      legend.querySelectorAll('.pie-legend-row').forEach(row => {
+        row.classList.toggle('is-selected', Number(row.dataset.index) === selectedSliceIndex);
+      });
+    }
+  }
+  renderPie('value');
+  document.getElementById('pie-toggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('.basis-btn');
+    if (!btn) return;
+    document.querySelectorAll('#pie-toggle .basis-btn').forEach(b => b.classList.toggle('is-active', b === btn));
+    selectedSliceIndex = null;
+    renderPie(btn.dataset.basis);
+  });
+
+  // ---------- 完整持股明細：產業分類 → 個股 → 完整欄位，三層手風琴 ----------
+  // 2026/09/11改版(RAY要求)：不要橫向拉動的表格，改成先看11個產業分類(跟圓餅圖同順序、
+  // 同顏色)，點分類展開該分類下的持股，每檔股票不顯示代碼(RAY要求移除)，點股票名稱再
+  // 展開完整15個欄位(沿用原本已經做好的detail-grid)。分類/個股旁邊顯示損益或市值，
+  // 依上方「損益/市值」切換鈕決定，兩層都跟著同一個開關切換。
+  const DETAIL_FIELDS = [
+    { key: 'industry', label: '產業', text: true },
+    { key: 'shares', label: '持股(今日餘額)', fmt: (v) => fmtNum(v) },
+    { key: 'price', label: '現價', fmt: (v) => fmtNum(v, 2) },
+    { key: 'cost_avg', label: '成本均價', fmt: (v) => fmtNum(v, 2) },
+    { key: 'value', label: '市值', fmt: fmtMoney },
+    { key: 'cost_total', label: '付出成本', fmt: fmtMoney },
+    { key: 'pnl', label: '損益試算', fmt: fmtMoney, pnlColor: true },
+    { key: 'industry_ratio', label: '產業占比', fmt: (v) => fmtPct(v, 2) },
+    { key: 'industry_cost', label: '產業成本', fmt: fmtMoney },
+    // 2026/09/16新增：K/L/M這3欄本來是純黑白數字，補上跟損益一樣的紅漲藍跌上色，
+    // 正負方向一眼看出來(沿用專案既有配色，不套用Excel報告本身的「紅正綠負」)。
+    { key: 'cost_change', label: '成本變化', fmt: fmtMoney, pnlColor: true },
+    { key: 'industry_cost_change', label: '產業成本變化', fmt: fmtMoney, pnlColor: true },
+    { key: 'ratio_change', label: '占比變化', fmt: (v) => fmtPct(v, 2), pnlColor: true },
+    { key: 'pnl_change', label: '損益變化', fmt: fmtMoney, pnlColor: true },
+    { key: 'industry_pnl_change', label: '產業損益變化', fmt: fmtMoney, pnlColor: true },
+  ];
+
+  function buildDetailGrid(r) {
+    const grid = document.createElement('div');
+    grid.className = 'detail-grid';
+    DETAIL_FIELDS.forEach(f => {
+      const raw = r[f.key];
+      const field = document.createElement('div');
+      field.className = 'detail-field';
+      const label = document.createElement('div');
+      label.className = 'f-label';
+      label.textContent = f.label;
+      const value = document.createElement('div');
+      value.className = 'f-value';
+      value.textContent = f.text ? (raw || '—') : (f.fmt ? f.fmt(raw) : (raw === null || raw === undefined ? '—' : raw));
+      if (f.pnlColor && raw !== null && raw !== undefined) value.classList.add(raw >= 0 ? 'pnl-up' : 'pnl-down');
+      field.appendChild(label);
+      field.appendChild(value);
+      grid.appendChild(field);
+    });
+    return grid;
+  }
+
+  let metric = 'pnl'; // 'pnl'/'value'/'cost_total'，跟上方切換鈕連動
+  // 2026/09/16新增：切換鈕跟旁邊的「較昨日」徽章要顯示哪個變化欄位是連動的——損益模式
+  // 看N/O，成本模式看K/L；市值沒有對應的每日變化欄位可比對，就不顯示徽章。
+  const DELTA_KEY = { pnl: 'pnl_change', cost_total: 'cost_change' };
+  const DELTA_KEY_INDUSTRY = { pnl: 'industry_pnl_change', cost_total: 'industry_cost_change' };
+
+  function renderCategoryList() {
+    const list = document.getElementById('category-list');
+    // 重繪前先記住哪些手風琴是展開的，重繪後還原，不會每次切換損益/市值都全部收合
+    const openCats = new Set(Array.from(list.querySelectorAll(':scope > .acc-item[open]')).map(d => d.dataset.cat));
+    const openCodes = new Set(Array.from(list.querySelectorAll('.acc-item .acc-item[open]')).map(d => d.dataset.code));
+    list.innerHTML = '';
+
+    // 2026/09/17新增：RAY要求依目前切換鈕(損益/市值/成本)的數值由高至低排序，不再
+    // 固定依產業編號1~11——顏色還是照原始類別索引(i)走，只有排列順序改變。
+    const categoryInfos = DATA.pie_categories
+      .map((cat, i) => {
+        const stocks = DATA.table_rows.filter(r => r.industry === cat);
+        const total = stocks.reduce((s, r) => s + (r[metric] || 0), 0);
+        return { cat, i, stocks, total, color: DATA.pie_colors[i] };
+      })
+      .filter(info => info.stocks.length)
+      .sort((a, b) => b.total - a.total);
+
+    categoryInfos.forEach(({ cat, i, stocks, total, color }) => {
+      const catItem = document.createElement('details');
+      catItem.className = 'acc-item';
+      catItem.dataset.cat = cat;
+      if (openCats.has(cat)) catItem.open = true;
+
+      const catSummary = document.createElement('summary');
+      catSummary.className = 'acc-btn';
+      // 成本本身沒有「賺賠」語意(投入多少就是多少)，不套紅漲藍跌上色，避免RAY誤以為
+      // 紅色代表獲利；損益/市值維持原本依正負上色
+      const catColorCls = metric === 'cost_total' ? '' : (total >= 0 ? 'pnl-up' : 'pnl-down');
+      // O產業損益變化／L產業成本變化都是整個產業族群共用的同一個數字(每檔股票的資料裡
+      // 都重複存了一份)，取任一筆非空值即可，不用加總；市值模式沒有對應變化欄位
+      const industryDeltaKey = DELTA_KEY_INDUSTRY[metric];
+      const catDelta = industryDeltaKey
+        ? stocks.map(r => r[industryDeltaKey]).find(v => v !== null && v !== undefined)
+        : undefined;
+      catSummary.innerHTML =
+        '<span class="swatch" style="background:' + color + '"></span>' +
+        '<span class="name"></span><span class="count"></span>' +
+        '<span class="quick-val ' + catColorCls + '"></span>' + deltaBadgeHtml(catDelta) +
+        '<span class="arrow">▶</span>';
+      catSummary.querySelector('.name').textContent = cat;
+      catSummary.querySelector('.count').textContent = stocks.length + '檔';
+      catSummary.querySelector('.quick-val').textContent = fmtMoney(total);
+      catItem.appendChild(catSummary);
+
+      const sub = document.createElement('div');
+      sub.className = 'acc-sublist';
+      stocks.slice().sort((a, b) => (b[metric] || 0) - (a[metric] || 0)).forEach(r => {
+        const stockItem = document.createElement('details');
+        stockItem.className = 'acc-item';
+        stockItem.dataset.code = r.code;
+        if (openCodes.has(r.code)) stockItem.open = true;
+
+        const stockSummary = document.createElement('summary');
+        stockSummary.className = 'acc-btn';
+        const valColor = metric === 'cost_total' ? '' : ((r[metric] || 0) >= 0 ? 'pnl-up' : 'pnl-down');
+        const stockDeltaKey = DELTA_KEY[metric];
+        const stockDelta = stockDeltaKey ? r[stockDeltaKey] : undefined;
+        stockSummary.innerHTML =
+          '<span class="name"></span><span class="quick-val ' + valColor + '"></span>' +
+          deltaBadgeHtml(stockDelta) + '<span class="arrow">▶</span>';
+        stockSummary.querySelector('.name').textContent = r.name;
+        stockSummary.querySelector('.quick-val').textContent = fmtMoney(r[metric]);
+        stockItem.appendChild(stockSummary);
+        stockItem.appendChild(buildDetailGrid(r));
+        sub.appendChild(stockItem);
+      });
+      catItem.appendChild(sub);
+      list.appendChild(catItem);
+    });
+  }
+  renderCategoryList();
+
+  document.getElementById('metric-toggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('.basis-btn');
+    if (!btn) return;
+    document.querySelectorAll('#metric-toggle .basis-btn').forEach(b => b.classList.toggle('is-active', b === btn));
+    metric = btn.dataset.metric;
+    renderCategoryList();
+  });
+
+  // ---------- footnote ----------
+  const ex = DATA.excluded || [];
+  let exText = '';
+  if (ex.length) {
+    exText = '<br><b>已排除：</b>' + ex.map(d => '代碼 ' + d.code + '（已下市，不計入任何統計）').join('、') + '。';
+  }
+  document.getElementById('footnote').innerHTML =
+    '資料來源：每日庫存/' + DATA.source_file + '　·　圓餅圖「市值佔比」= 現價×持股股數，「成本佔比」= 成本均價×持股股數（對應Excel「產業占比」欄位邏輯），完整顯示全部11種產業分類，顏色跟每日庫存Excel報告一致。' + exText;
+})();
+</script>
+
+</body>
+</html>
