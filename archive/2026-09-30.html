@@ -332,7 +332,10 @@
         const lx = cx + (r + rInner) / 2 * Math.cos(mid);
         const ly = cy + (r + rInner) / 2 * Math.sin(mid);
         const t = svgEl('text', { x: lx, y: ly + 4, 'text-anchor': 'middle', 'font-size': '11.5', 'font-weight': '700', fill: textColorFor(pieColors[i]), style: 'pointer-events:none' });
-        t.textContent = v.toFixed(0) + '%';
+        // 2026/10/01 RAY要求：圓餅圖切片內的百分比文字跟下面圖例列表(.pct，toFixed(1))
+        // 對不起來(切片原本四捨五入到整數，圖例保留小數點後1位)，統一改成跟圖例同一套
+        // toFixed(1)，數字才會完全一致，不會讓RAY覺得兩處數字兜不起來。
+        t.textContent = v.toFixed(1) + '%';
         svg.appendChild(t);
       }
     });
