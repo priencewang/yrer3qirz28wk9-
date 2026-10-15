@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>已實現損益區間查詢</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
+  .viz-root {
+    color-scheme: light;
+    --surface-1:   #fcfcfb;
+    --page-plane:  #f9f9f7;
+    --text-primary:#0b0b0b;
+    --text-secondary:#52514e;
+    --text-muted:  #898781;
+    --gridline:    #e1e0d9;
+    --border:      rgba(11,11,11,0.10);
+    --accent:      #2a78d6;
+    --gain:        #e34948; /* 台股慣例：紅=漲/賺 */
+    --loss:        #2a78d6; /* 台股慣例：藍=跌/賠 */
+    --warn-bg:     #fdf3e5;
+    --warn-text:   #8a5a12;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .viz-root {
+      color-scheme: dark;
+      --surface-1:   #1a1a19;
+      --page-plane:  #0d0d0d;
+      --text-primary:#ffffff;
+      --text-secondary:#c3c2b7;
+      --text-muted:  #898781;
+      --gridline:    #2c2c2a;
+      --border:      rgba(255,255,255,0.10);
+      --accent:      #3987e5;
+      --gain:        #e66767;
+      --loss:        #3987e5;
+      --warn-bg:     #332a18;
+      --warn-text:   #e8b56a;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:   #1a1a19;
+    --page-plane:  #0d0d0d;
+    --text-primary:#ffffff;
+    --text-secondary:#c3c2b7;
+    --text-muted:  #898781;
+    --gridline:    #2c2c2a;
+    --border:      rgba(255,255,255,0.10);
+    --accent:      #3987e5;
+    --gain:        #e66767;
+    --loss:        #3987e5;
+    --warn-bg:     #332a18;
+    --warn-text:   #e8b56a;
+  }
+
+  .viz-root {
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100%;
+    padding: 28px 20px 60px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .hdr { margin-bottom: 22px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .hdr h1 { font-size: 22px; font-weight: 700; margin: 0 0 6px; }
+  .hdr p { margin: 0; color: var(--text-secondary); font-size: 13px; }
+  .hdr .back-link { font-size: 12.5px; color: var(--accent); text-decoration: none; white-space: nowrap; padding-top: 4px; }
+  .hdr .back-link:hover { text-decoration: underline; }
+
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; font-weight: 700; margin: 0 0 2px; }
+  .card .sub { font-size: 12px; color: var(--text-secondary); margin: 0 0 14px; }
+
+  .range-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .range-field { display: flex; flex-direction: column; gap: 4px; }
+  .range-field label { font-size: 11.5px; color: var(--text-secondary); }
+  .range-field select {
+    font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text-primary);
+    background: var(--page-plane); border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; min-width: 132px;
+  }
+  .range-sep { color: var(--text-muted); font-size: 13px; padding-top: 16px; }
+
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 16px 0 0; }
+  @media (max-width: 720px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .tile { background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .tile .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+  .tile .value { font-size: 21px; font-weight: 700; line-height: 1.2; }
+  .tile .value.pnl-up { color: var(--gain); }
+  .tile .value.pnl-down { color: var(--loss); }
+
+  .warn-banner {
+    background: var(--warn-bg); color: var(--warn-text); border-radius: 9px;
+    padding: 10px 14px; font-size: 12px; line-height: 1.6; margin: 14px 0 0;
+  }
+
+  .acc-item { border: 1px solid var(--border); border-radius: 9px; margin-bottom: 8px; overflow: hidden; }
+  .acc-item .acc-item { border: none; border-top: 1px solid var(--gridline); border-radius: 0; margin-bottom: 0; }
+  .acc-btn {
+    width: 100%; display: flex; align-items: center; gap: 10px; padding: 11px 14px;
+    background: var(--page-plane); border: none; cursor: pointer; font-family: inherit; text-align: left;
+    -webkit-appearance: none; list-style: none;
+  }
+  .acc-btn::-webkit-details-marker { display: none; }
+  .acc-btn::marker { content: ""; }
+  .acc-btn .name { font-weight: 700; font-size: 14px; color: var(--text-primary); flex: 1; min-width: 0; }
+  .acc-btn .quick-val { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13.5px; flex-shrink: 0; }
+  .acc-btn .count { color: var(--text-muted); font-size: 11.5px; flex-shrink: 0; }
+  .acc-btn .arrow { color: var(--text-muted); transition: transform .15s; flex-shrink: 0; }
+  details[open] > .acc-btn .arrow { transform: rotate(90deg); }
+  .acc-btn:hover { background: var(--gridline); }
+  .acc-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .acc-item .acc-item .acc-btn { padding: 9px 14px 9px 30px; }
+  .acc-item .acc-item .acc-btn .name { font-size: 13px; font-weight: 600; }
+  .acc-sublist { background: var(--gridline); }
+  .acc-sublist .acc-item .acc-btn { background: var(--surface-1); }
+  .acc-sublist .acc-item .acc-btn:hover { background: var(--page-plane); }
+
+  .detail-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px;
+    background: var(--gridline); border-top: 1px solid var(--gridline);
+  }
+  .detail-field { background: var(--surface-1); padding: 10px 14px; }
+  .detail-field .f-label { font-size: 11px; color: var(--text-muted); margin-bottom: 3px; }
+  .detail-field .f-value { font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .detail-field .f-value.pnl-up { color: var(--gain); }
+  .detail-field .f-value.pnl-down { color: var(--loss); }
+
+  .empty-hint { text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px 0; }
+  .footnote { font-size: 11.5px; color: var(--text-muted); line-height: 1.7; padding: 4px 2px; }
+</style>
+</head>
+<body>
+
+<div class="viz-root">
+  <div class="wrap">
+    <div class="hdr">
+      <div>
+        <h1>已實現損益區間查詢</h1>
+        <p id="hdr-sub"></p>
+      </div>
+      <a class="back-link" href="index.html">‹ 回到單日持股明細</a>
+    </div>
+
+    <div class="card">
+      <h2>選擇查詢區間</h2>
+      <p class="sub">下拉選單只會列出目前已經累積到的日期（見下方說明）</p>
+      <div class="range-row">
+        <div class="range-field">
+          <label for="start-date">起始日期</label>
+          <select id="start-date"></select>
+        </div>
+        <div class="range-sep">～</div>
+        <div class="range-field">
+          <label for="end-date">結束日期</label>
+          <select id="end-date"></select>
+        </div>
+      </div>
+
+      <div class="kpi-row" id="kpi-row"></div>
+      <div id="warn-wrap"></div>
+    </div>
+
+    <div class="card">
+      <h2>逐日明細</h2>
+      <p class="sub">只列出區間內有賣出紀錄的日子，點開看當天各股票的明細</p>
+      <div id="day-list"></div>
+    </div>
+
+    <div class="footnote" id="footnote"></div>
+  </div>
+</div>
+
+<script type="application/json" id="realized-pnl-history-data">
+{"dates": ["2026-10-15", "2026-10-16"], "days": {"2026-10-15": {"date": "2026-10-15", "has_sales": true, "records": [{"code": "6187", "name": "萬潤", "quantity": 126, "entry_price": 1396.8253968253969, "cover_price": 1390.0, "entry_cost": 176000, "cover_cost": 175140, "pnl": -1882, "pr_ratio": -1.07}, {"code": "2344", "name": "華邦電", "quantity": 50, "entry_price": 218.0, "cover_price": 156.5, "entry_cost": 10900, "cover_cost": 7825, "pnl": -3124, "pr_ratio": -28.62}, {"code": "2408", "name": "南亞科", "quantity": 35, "entry_price": 538.1428571428571, "cover_price": 442.0, "entry_cost": 18835, "cover_cost": 15470, "pnl": -3460, "pr_ratio": -18.34}, {"code": "4958", "name": "臻鼎-KY", "quantity": 120, "entry_price": 566.925, "cover_price": 523.0, "entry_cost": 68031, "cover_cost": 62760, "pnl": -5645, "pr_ratio": -8.29}], "total": {"entry_amount": 273766, "cover_amount": 261195, "quantity": 331, "pnl": -14111, "pr_ratio": -5.15}}, "2026-10-16": {"date": "2026-10-16", "has_sales": false, "records": [], "total": null}}}
+</script>
+
+<script>
+(function () {
+  const DATA = JSON.parse(document.getElementById('realized-pnl-history-data').textContent);
+  const dates = DATA.dates || [];
+  const days = DATA.days || {};
+
+  const fmtMoney = (n) => n === null || n === undefined ? '—' : '$' + Math.round(n).toLocaleString('en-US');
+  const fmtPct = (n, d) => n === null || n === undefined ? '—' : (n > 0 ? '+' : '') + n.toFixed(d === undefined ? 1 : d) + '%';
+  const fmtNum = (n, d) => n === null || n === undefined ? '—' : Number(n).toLocaleString('en-US', { maximumFractionDigits: d === undefined ? 0 : d });
+
+  document.getElementById('hdr-sub').textContent = dates.length
+    ? ('目前累積範圍：' + dates[0] + ' ～ ' + dates[dates.length - 1] + '（共' + dates.length + '天資料）')
+    : '目前還沒有累積到任何一天的資料';
+
+  const startSel = document.getElementById('start-date');
+  const endSel = document.getElementById('end-date');
+  dates.forEach(d => {
+    startSel.add(new Option(d, d));
+    endSel.add(new Option(d, d));
+  });
+  if (dates.length) {
+    startSel.value = dates[0];
+    endSel.value = dates[dates.length - 1];
+  }
+
+  const RP_FIELDS = [
+    { key: 'quantity', label: '賣出股數', fmt: (v) => fmtNum(v) },
+    { key: 'entry_price', label: '平均買進價', fmt: (v) => fmtNum(v, 2) },
+    { key: 'cover_price', label: '平均賣出價', fmt: (v) => fmtNum(v, 2) },
+    { key: 'entry_cost', label: '原始成本', fmt: fmtMoney },
+    { key: 'cover_cost', label: '賣出收回金額', fmt: fmtMoney },
+    { key: 'pnl', label: '已實現損益', fmt: fmtMoney, pnlColor: true },
+    { key: 'pr_ratio', label: '報酬率', fmt: (v) => fmtPct(v, 2), pnlColor: true },
+  ];
+
+  function buildTile(label, value, dir) {
+    const tile = document.createElement('div');
+    tile.className = 'tile';
+    tile.innerHTML = '<div class="label"></div><div class="value"></div>';
+    tile.querySelector('.label').textContent = label;
+    const valueEl = tile.querySelector('.value');
+    valueEl.textContent = value;
+    if (dir) valueEl.classList.add(dir === 'up' ? 'pnl-up' : 'pnl-down');
+    return tile;
+  }
+
+  function buildStockDetail(r) {
+    const item = document.createElement('details');
+    item.className = 'acc-item';
+    const summary = document.createElement('summary');
+    summary.className = 'acc-btn';
+    const valColor = (r.pnl || 0) >= 0 ? 'pnl-up' : 'pnl-down';
+    summary.innerHTML =
+      '<span class="name"></span><span class="quick-val ' + valColor + '"></span>' +
+      '<span class="arrow">▶</span>';
+    summary.querySelector('.name').textContent = r.name + '（' + r.code + '）';
+    summary.querySelector('.quick-val').textContent = fmtMoney(r.pnl) + '　' + fmtPct(r.pr_ratio, 2);
+    item.appendChild(summary);
+
+    const grid = document.createElement('div');
+    grid.className = 'detail-grid';
+    RP_FIELDS.forEach(f => {
+      const raw = r[f.key];
+      const field = document.createElement('div');
+      field.className = 'detail-field';
+      field.innerHTML = '<div class="f-label"></div><div class="f-value"></div>';
+      field.querySelector('.f-label').textContent = f.label;
+      const valueEl = field.querySelector('.f-value');
+      valueEl.textContent = f.fmt ? f.fmt(raw) : (raw === null || raw === undefined ? '—' : raw);
+      if (f.pnlColor && raw !== null && raw !== undefined) valueEl.classList.add(raw >= 0 ? 'pnl-up' : 'pnl-down');
+      grid.appendChild(field);
+    });
+    item.appendChild(grid);
+    return item;
+  }
+
+  function render() {
+    let start = startSel.value, end = endSel.value;
+    if (!start || !end) return;
+    if (start > end) {
+      const tmp = start; start = end; end = tmp;
+      startSel.value = start; endSel.value = end;
+    }
+    const inRange = dates.filter(d => d >= start && d <= end);
+
+    let coverSum = 0, entrySum = 0, pnlSum = 0, recordCount = 0;
+    const failedDates = [];
+    const activeDays = [];
+    inRange.forEach(d => {
+      const day = days[d];
+      if (!day) return;
+      if (day.note) failedDates.push(d);
+      if (day.has_sales && day.total) {
+        coverSum += day.total.cover_amount || 0;
+        entrySum += day.total.entry_amount || 0;
+        pnlSum += day.total.pnl || 0;
+        recordCount += (day.records || []).length;
+        activeDays.push(d);
+      }
+    });
+    const prRatio = entrySum ? (pnlSum / entrySum * 100) : null;
+    const pnlDir = pnlSum >= 0 ? 'up' : 'down';
+
+    const kpiRow = document.getElementById('kpi-row');
+    kpiRow.innerHTML = '';
+    kpiRow.appendChild(buildTile('賣出筆數', recordCount + ' 筆'));
+    kpiRow.appendChild(buildTile('賣出收回總金額', fmtMoney(coverSum)));
+    kpiRow.appendChild(buildTile('已實現損益小計', fmtMoney(pnlSum), pnlDir));
+    kpiRow.appendChild(buildTile('整體報酬率', fmtPct(prRatio, 2), pnlDir));
+
+    const warnWrap = document.getElementById('warn-wrap');
+    warnWrap.innerHTML = '';
+    if (failedDates.length) {
+      const banner = document.createElement('div');
+      banner.className = 'warn-banner';
+      banner.textContent = '⚠️ 這段區間裡，' + failedDates.join('、') + ' 查詢失敗，當天資料可能不完整，上面的加總沒有算進這幾天。';
+      warnWrap.appendChild(banner);
+    }
+
+    const listEl = document.getElementById('day-list');
+    listEl.innerHTML = '';
+    if (!activeDays.length) {
+      listEl.innerHTML = '<div class="empty-hint">這段期間沒有賣出紀錄</div>';
+      return;
+    }
+    activeDays.slice().reverse().forEach(d => {
+      const day = days[d];
+      const total = day.total || {};
+      const item = document.createElement('details');
+      item.className = 'acc-item';
+      const summary = document.createElement('summary');
+      summary.className = 'acc-btn';
+      const dayDir = (total.pnl || 0) >= 0 ? 'pnl-up' : 'pnl-down';
+      summary.innerHTML =
+        '<span class="name"></span><span class="count"></span>' +
+        '<span class="quick-val ' + dayDir + '"></span><span class="arrow">▶</span>';
+      summary.querySelector('.name').textContent = d;
+      summary.querySelector('.count').textContent = (day.records || []).length + ' 筆';
+      summary.querySelector('.quick-val').textContent = fmtMoney(total.cover_amount) + '　' + fmtMoney(total.pnl);
+      item.appendChild(summary);
+
+      const sublist = document.createElement('div');
+      sublist.className = 'acc-sublist';
+      (day.records || []).slice().sort((a, b) => (b.pnl || 0) - (a.pnl || 0)).forEach(r => {
+        sublist.appendChild(buildStockDetail(r));
+      });
+      item.appendChild(sublist);
+      listEl.appendChild(item);
+    });
+  }
+
+  startSel.addEventListener('change', render);
+  endSel.addEventListener('change', render);
+  render();
+
+  document.getElementById('footnote').innerHTML =
+    '資料來源：永豐Shioaji「已實現損益」查詢，跟持股清單完全獨立，每天排程累積一筆。' +
+    '⚠️ 這個API本身不會保留「每一筆交易是哪一天賣的」逐日分錄，只能從開始累積的那天起往後查，' +
+    '查不到累積開始之前更早的歷史——目前資料從 ' + (dates.length ? dates[0] : '（尚無資料）') + ' 開始累積。' +
+    '「賣出收回金額」是扣掉手續費/證交稅後的實際淨額（跟「單日持股明細」今日已實現損益卡片同一套數字口徑）。';
+})();
+</script>
+
+</body>
+</html>
