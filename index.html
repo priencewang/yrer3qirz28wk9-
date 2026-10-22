@@ -156,10 +156,17 @@
         <h1>單日持股明細</h1>
         <p id="hdr-sub"></p>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-        <a class="history-link" href="history.html">查看歷史報告 ›</a>
-        <a class="history-link" href="etf-cost.html">ETF真實成本 ›</a>
-        <a class="history-link" href="realized-pnl.html">已實現損益區間查詢 ›</a>
+      <div style="flex:1 1 300px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
+          <a class="history-link" href="history.html">查看歷史報告 ›</a>
+          <a class="history-link" href="etf-cost.html">ETF真實成本 ›</a>
+          <a class="history-link" href="realized-pnl.html">已實現損益區間查詢 ›</a>
+        </div>
+        <!-- 我的水位表入口(2026/10/23新增；同日RAY要求從頁面最下方移到右上方) -->
+        <a href="water-level.html" style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--text-primary);background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:10px 14px;">
+          <span style="font-size:15px;font-weight:700;white-space:nowrap;">我的水位表 ›</span>
+          <span style="font-size:11px;color:var(--text-secondary);white-space:nowrap;">現金・加減碼試算</span>
+        </a>
       </div>
     </div>
 
@@ -192,14 +199,6 @@
 
     <div id="realized-pnl-wrap"></div>
 
-    <!-- 我的水位表入口(2026/10/23新增，RAY要求放在下方，點進去跳到獨立頁面) -->
-    <a href="water-level.html" style="display:flex;align-items:center;justify-content:space-between;gap:12px;text-decoration:none;color:inherit;background:var(--surface-1);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px;">
-      <span>
-        <span style="display:block;font-size:15px;font-weight:700;">我的水位表</span>
-        <span style="display:block;font-size:12px;color:var(--text-secondary);margin-top:3px;">持股水位、可用現金、目標加減碼試算</span>
-      </span>
-      <span style="font-size:20px;color:var(--text-secondary);">›</span>
-    </a>
 
     <div class="footnote" id="footnote"></div>
   </div>
