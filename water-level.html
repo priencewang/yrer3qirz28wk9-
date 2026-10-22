@@ -102,6 +102,17 @@
   .preset-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
   .preset { font-family: inherit; font-size: 12.5px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary); border-radius: 999px; padding: 6px 11px; cursor: pointer; }
   .preset.is-active { background: var(--text-primary); color: var(--surface-1); border-color: var(--text-primary); }
+  .basis-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .basis-toggle { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; }
+  .basis-btn { font-family: inherit; font-size: 13px; border: 0; background: transparent; color: var(--text-secondary); padding: 6px 14px; border-radius: 8px; cursor: pointer; }
+  .basis-btn.is-active { background: var(--surface-1); color: var(--text-primary); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .info-btn { font-family: inherit; font-size: 12.5px; border: 1px solid var(--border); background: transparent; color: var(--accent); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+  .explain { display: none; background: var(--surface-2); border-radius: 10px; padding: 12px 14px; font-size: 13px; line-height: 1.7; margin-bottom: 12px; }
+  .explain.open { display: block; }
+  .explain h3 { font-size: 13.5px; margin: 0 0 2px; }
+  .explain p { margin: 0 0 10px; color: var(--text-secondary); }
+  .explain p:last-child { margin-bottom: 0; }
+  .explain b { color: var(--text-primary); }
   .slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
   .slider-row input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
   .slider-row .tval { font-size: 20px; font-weight: 700; min-width: 58px; text-align: right; font-variant-numeric: tabular-nums; }
@@ -172,7 +183,23 @@
 
     <div class="card">
       <h2>1 · 戰況總覽</h2>
-      <p class="sub">持股水位＝股票市值 ÷（股票市值＋可用現金）。黑色刻度是你設定的目標水位。</p>
+      <p class="sub" id="formula"></p>
+      <div class="basis-bar">
+        <div class="basis-toggle" id="basis-toggle">
+          <button class="basis-btn" data-basis="value">市值水位</button>
+          <button class="basis-btn" data-basis="cost">成本水位</button>
+        </div>
+        <button class="info-btn" id="info-btn">？兩者差在哪</button>
+      </div>
+      <div class="explain" id="explain">
+        <h3>市值水位（預設，控制風險用）</h3>
+        <p>＝股票<b>現在值多少錢</b> ÷（股票市值＋可用現金）。回答「<b>我現在的身家，有多少暴露在股市漲跌裡</b>」。明天大盤跌10%，你損失的是「現在市值」的10%，不是當初成本的10%，所以要決定多頭加碼、空頭減碼，看這個比較準。</p>
+        <h3>成本水位（看本金用了多少）</h3>
+        <p>＝<b>當初買股票投入的錢</b> ÷（投入成本＋可用現金），不管股票後來漲跌。回答「<b>我準備的子彈已經打出去多少</b>」，適合看資金額度、紀律控管。</p>
+        <h3>兩者什麼時候會差很多</h3>
+        <p>股票大漲後：成本水位會<b>低估</b>你的風險（例：用一半的錢買股票、股票漲一倍，成本水位還是50%，市值水位已經67%）。股票大跌後：成本水位會<b>高估</b>你的風險，讓你以為還很滿。帳面損益不大時兩者幾乎一樣。</p>
+        <p class="muted" style="font-size:12px;">註：成本用永豐的「付出成本」，ETF配息後永豐會把成本往下調，所以會比真正掏出去的錢略少一點。下方第4～7區、戰損推演一律用市值計算，不受切換影響。</p>
+      </div>
       <div class="gauge-wrap" id="gauge"></div>
       <div class="gauge-caption" id="gauge-caption"></div>
       <div class="kpi-grid" id="kpi-grid"></div>
@@ -239,7 +266,7 @@
 <div class="tip" id="tip"></div>
 
 <script type="application/json" id="water-level-data">
-{"date": "2026-10-22", "cash_date": "2026-10-23", "cash_ok": true, "cash_stale": true, "cash_note": "", "balance": 1522659, "settlements": [{"date": "2026-10-22", "T": 0, "amount": -119455}, {"date": "2026-10-23", "T": 1, "amount": -537309}, {"date": "2026-10-27", "T": 2, "amount": 188318}], "pending_net": -348991, "available_cash": 1173668, "stock_value": 7215218, "total_assets": 8388886, "water_level": 86.01, "effective_exposure": 86.7, "groups": {"個股": 4032078, "股票型ETF": 2722586, "槓桿ETF": 259363, "債券ETF": 201191}, "group_counts": {"個股": 52, "股票型ETF": 9, "槓桿ETF": 2, "債券ETF": 1}, "industries": [{"name": "ETF 核心配置（不與個股混編）", "value": 3183140, "color": "#BFBFBF"}, {"name": "半導體 / 先進製程設備與晶圓代工", "value": 953736, "color": "#9DC3E6"}, {"name": "核心戰略 (ABF載板四雄)", "value": 754398, "color": "#FFD966"}, {"name": "CPO 光通訊 / 矽光子網通設備", "value": 577351, "color": "#F4A6C0"}, {"name": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "value": 566111, "color": "#C6A0DC"}, {"name": "核心成熟製程 / 被動與電子組件", "value": 413217, "color": "#D9B38C"}, {"name": "半導體記憶體 / 基礎晶圓代工與封測", "value": 309827, "color": "#7FD1C1"}, {"name": "資通訊與半導體基礎建設 / 水利工程", "value": 224979, "color": "#8ACBE0"}, {"name": "先進封裝新題材 / 玻璃基板 (TGV)", "value": 138525, "color": "#F8B26A"}, {"name": "AI 伺服器水冷液冷散熱", "value": 72539, "color": "#C9D96B"}, {"name": "電子核心關鍵組件 / 石英元件", "value": 21395, "color": "#B3B3E6"}], "holdings": [{"code": "009816", "name": "凱基台灣TOP50", "value": 953683, "pnl": 318883, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "2330", "name": "台積電", "value": 712342, "pnl": 272458, "group": "個股", "industry": "半導體 / 先進製程設備與晶圓代工"}, {"code": "00830", "name": "國泰費城半導體", "value": 645658, "pnl": 186538, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "2368", "name": "金像電", "value": 275302, "pnl": -37116, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "00924", "name": "復華S&P500成長", "value": 270034, "pnl": 22834, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "2327", "name": "國巨*", "value": 241278, "pnl": -74498, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "00935", "name": "野村臺灣新科技50", "value": 219857, "pnl": -8743, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "00964", "name": "中信亞太高股息", "value": 216676, "pnl": 42076, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "3037", "name": "欣興", "value": 212804, "pnl": -6489, "group": "個股", "industry": "核心戰略 (ABF載板四雄)"}, {"code": "00725B", "name": "國泰投資級公司債", "value": 201191, "pnl": -3289, "group": "債券ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "3189", "name": "景碩", "value": 197310, "pnl": -9925, "group": "個股", "industry": "核心戰略 (ABF載板四雄)"}, {"code": "8046", "name": "南電", "value": 190174, "pnl": -16213, "group": "個股", "industry": "核心戰略 (ABF載板四雄)"}, {"code": "3583", "name": "辛耘", "value": 177416, "pnl": -88078, "group": "個股", "industry": "半導體 / 先進製程設備與晶圓代工"}, {"code": "6139", "name": "亞翔", "value": 168854, "pnl": -58248, "group": "個股", "industry": "資通訊與半導體基礎建設 / 水利工程"}, {"code": "4958", "name": "臻鼎-KY", "value": 154110, "pnl": -179, "group": "個股", "industry": "核心戰略 (ABF載板四雄)"}, {"code": "00685L", "name": "群益臺灣加權正2", "value": 152776, "pnl": 9516, "group": "槓桿ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "3234", "name": "光環", "value": 138013, "pnl": -9658, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "009802", "name": "富邦旗艦50", "value": 135455, "pnl": 3645, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "00985A", "name": "主動野村台灣50", "value": 121080, "pnl": -4740, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "6239", "name": "力成", "value": 112097, "pnl": -45722, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "00631L", "name": "元大台灣50正2", "value": 106587, "pnl": -9453, "group": "槓桿ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "8021", "name": "尖點", "value": 105393, "pnl": -11640, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "4977", "name": "眾達-KY", "value": 94624, "pnl": -21930, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "3026", "name": "禾伸堂", "value": 94084, "pnl": -10514, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "00407A", "name": "主動凱基台灣", "value": 93035, "pnl": -5665, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "4979", "name": "華星光", "value": 90050, "pnl": -34859, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "6147", "name": "頎邦", "value": 84887, "pnl": -13733, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "4908", "name": "前鼎", "value": 70412, "pnl": -19934, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "00402A", "name": "主動安聯美國科技", "value": 67108, "pnl": -2892, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "3163", "name": "波若威", "value": 65949, "pnl": -43185, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "8064", "name": "東捷", "value": 65462, "pnl": -24379, "group": "個股", "industry": "先進封裝新題材 / 玻璃基板 (TGV)"}, {"code": "6187", "name": "萬潤", "value": 63978, "pnl": -7784, "group": "個股", "industry": "半導體 / 先進製程設備與晶圓代工"}, {"code": "8358", "name": "金居", "value": 53260, "pnl": -7124, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "8039", "name": "台虹", "value": 52966, "pnl": -11726, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "6207", "name": "雷科", "value": 52500, "pnl": -5140, "group": "個股", "industry": "先進封裝新題材 / 玻璃基板 (TGV)"}, {"code": "2308", "name": "台達電", "value": 46595, "pnl": -11687, "group": "個股", "industry": "資通訊與半導體基礎建設 / 水利工程"}, {"code": "6770", "name": "力積電", "value": 45619, "pnl": -7794, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "2367", "name": "燿華", "value": 44751, "pnl": -26049, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "6182", "name": "合晶", "value": 41618, "pnl": -15062, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "4991", "name": "環宇-KY", "value": 41317, "pnl": -13460, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "2345", "name": "智邦", "value": 40647, "pnl": -5868, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "2337", "name": "旺宏", "value": 39626, "pnl": -25566, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "6831", "name": "邁科", "value": 38983, "pnl": -48226, "group": "個股", "industry": "AI 伺服器水冷液冷散熱"}, {"code": "3081", "name": "聯亞", "value": 35469, "pnl": -3661, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "2313", "name": "華通", "value": 33527, "pnl": -7571, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "3483", "name": "力致", "value": 32201, "pnl": -12133, "group": "個股", "industry": "AI 伺服器水冷液冷散熱"}, {"code": "2478", "name": "大毅", "value": 23596, "pnl": -5344, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "3149", "name": "正達", "value": 20491, "pnl": -10052, "group": "個股", "industry": "先進封裝新題材 / 玻璃基板 (TGV)"}, {"code": "2408", "name": "南亞科", "value": 18960, "pnl": -5039, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "6173", "name": "信昌電", "value": 12274, "pnl": -3430, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "3042", "name": "晶技", "value": 11814, "pnl": -5129, "group": "個股", "industry": "電子核心關鍵組件 / 石英元件"}, {"code": "8289", "name": "泰藝", "value": 9581, "pnl": -5243, "group": "個股", "industry": "電子核心關鍵組件 / 石英元件"}, {"code": "8936", "name": "國統", "value": 9530, "pnl": -506, "group": "個股", "industry": "資通訊與半導體基礎建設 / 水利工程"}, {"code": "2344", "name": "華邦電", "value": 7691, "pnl": -3224, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "3324", "name": "雙鴻", "value": 1355, "pnl": 190, "group": "個股", "industry": "AI 伺服器水冷液冷散熱"}, {"code": "6488", "name": "環球晶", "value": 823, "pnl": -155, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "6213", "name": "聯茂", "value": 774, "pnl": 234, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "4971", "name": "IET-KY", "value": 448, "pnl": -152, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "3450", "name": "聯鈞", "value": 422, "pnl": -107, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "2492", "name": "華新科", "value": 366, "pnl": 41, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "1815", "name": "富喬", "value": 138, "pnl": 0, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "2303", "name": "聯電", "value": 124, "pnl": -20, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "3673", "name": "TPK-KY", "value": 72, "pnl": -14, "group": "個股", "industry": "先進封裝新題材 / 玻璃基板 (TGV)"}, {"code": "6806", "name": "森葳能源", "value": 1, "pnl": -99441, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}], "stock_count": 64, "realized_today": 189150, "history": []}
+{"date": "2026-10-22", "cash_date": "2026-10-23", "cash_ok": true, "cash_stale": true, "cash_note": "", "balance": 1522659, "settlements": [{"date": "2026-10-22", "T": 0, "amount": -119455}, {"date": "2026-10-23", "T": 1, "amount": -537309}, {"date": "2026-10-27", "T": 2, "amount": 188318}], "pending_net": -348991, "available_cash": 1173668, "stock_value": 7215218, "total_assets": 8388886, "water_level": 86.01, "effective_exposure": 86.7, "stock_cost": 7266592, "total_assets_cost": 8440260, "water_level_cost": 86.09, "groups": {"個股": 4032078, "股票型ETF": 2722586, "槓桿ETF": 259363, "債券ETF": 201191}, "group_counts": {"個股": 52, "股票型ETF": 9, "槓桿ETF": 2, "債券ETF": 1}, "industries": [{"name": "ETF 核心配置（不與個股混編）", "value": 3183140, "color": "#BFBFBF"}, {"name": "半導體 / 先進製程設備與晶圓代工", "value": 953736, "color": "#9DC3E6"}, {"name": "核心戰略 (ABF載板四雄)", "value": 754398, "color": "#FFD966"}, {"name": "CPO 光通訊 / 矽光子網通設備", "value": 577351, "color": "#F4A6C0"}, {"name": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "value": 566111, "color": "#C6A0DC"}, {"name": "核心成熟製程 / 被動與電子組件", "value": 413217, "color": "#D9B38C"}, {"name": "半導體記憶體 / 基礎晶圓代工與封測", "value": 309827, "color": "#7FD1C1"}, {"name": "資通訊與半導體基礎建設 / 水利工程", "value": 224979, "color": "#8ACBE0"}, {"name": "先進封裝新題材 / 玻璃基板 (TGV)", "value": 138525, "color": "#F8B26A"}, {"name": "AI 伺服器水冷液冷散熱", "value": 72539, "color": "#C9D96B"}, {"name": "電子核心關鍵組件 / 石英元件", "value": 21395, "color": "#B3B3E6"}], "holdings": [{"code": "009816", "name": "凱基台灣TOP50", "value": 953683, "pnl": 318883, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "2330", "name": "台積電", "value": 712342, "pnl": 272458, "group": "個股", "industry": "半導體 / 先進製程設備與晶圓代工"}, {"code": "00830", "name": "國泰費城半導體", "value": 645658, "pnl": 186538, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "2368", "name": "金像電", "value": 275302, "pnl": -37116, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "00924", "name": "復華S&P500成長", "value": 270034, "pnl": 22834, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "2327", "name": "國巨*", "value": 241278, "pnl": -74498, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "00935", "name": "野村臺灣新科技50", "value": 219857, "pnl": -8743, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "00964", "name": "中信亞太高股息", "value": 216676, "pnl": 42076, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "3037", "name": "欣興", "value": 212804, "pnl": -6489, "group": "個股", "industry": "核心戰略 (ABF載板四雄)"}, {"code": "00725B", "name": "國泰投資級公司債", "value": 201191, "pnl": -3289, "group": "債券ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "3189", "name": "景碩", "value": 197310, "pnl": -9925, "group": "個股", "industry": "核心戰略 (ABF載板四雄)"}, {"code": "8046", "name": "南電", "value": 190174, "pnl": -16213, "group": "個股", "industry": "核心戰略 (ABF載板四雄)"}, {"code": "3583", "name": "辛耘", "value": 177416, "pnl": -88078, "group": "個股", "industry": "半導體 / 先進製程設備與晶圓代工"}, {"code": "6139", "name": "亞翔", "value": 168854, "pnl": -58248, "group": "個股", "industry": "資通訊與半導體基礎建設 / 水利工程"}, {"code": "4958", "name": "臻鼎-KY", "value": 154110, "pnl": -179, "group": "個股", "industry": "核心戰略 (ABF載板四雄)"}, {"code": "00685L", "name": "群益臺灣加權正2", "value": 152776, "pnl": 9516, "group": "槓桿ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "3234", "name": "光環", "value": 138013, "pnl": -9658, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "009802", "name": "富邦旗艦50", "value": 135455, "pnl": 3645, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "00985A", "name": "主動野村台灣50", "value": 121080, "pnl": -4740, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "6239", "name": "力成", "value": 112097, "pnl": -45722, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "00631L", "name": "元大台灣50正2", "value": 106587, "pnl": -9453, "group": "槓桿ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "8021", "name": "尖點", "value": 105393, "pnl": -11640, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "4977", "name": "眾達-KY", "value": 94624, "pnl": -21930, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "3026", "name": "禾伸堂", "value": 94084, "pnl": -10514, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "00407A", "name": "主動凱基台灣", "value": 93035, "pnl": -5665, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "4979", "name": "華星光", "value": 90050, "pnl": -34859, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "6147", "name": "頎邦", "value": 84887, "pnl": -13733, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "4908", "name": "前鼎", "value": 70412, "pnl": -19934, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "00402A", "name": "主動安聯美國科技", "value": 67108, "pnl": -2892, "group": "股票型ETF", "industry": "ETF 核心配置（不與個股混編）"}, {"code": "3163", "name": "波若威", "value": 65949, "pnl": -43185, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "8064", "name": "東捷", "value": 65462, "pnl": -24379, "group": "個股", "industry": "先進封裝新題材 / 玻璃基板 (TGV)"}, {"code": "6187", "name": "萬潤", "value": 63978, "pnl": -7784, "group": "個股", "industry": "半導體 / 先進製程設備與晶圓代工"}, {"code": "8358", "name": "金居", "value": 53260, "pnl": -7124, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "8039", "name": "台虹", "value": 52966, "pnl": -11726, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "6207", "name": "雷科", "value": 52500, "pnl": -5140, "group": "個股", "industry": "先進封裝新題材 / 玻璃基板 (TGV)"}, {"code": "2308", "name": "台達電", "value": 46595, "pnl": -11687, "group": "個股", "industry": "資通訊與半導體基礎建設 / 水利工程"}, {"code": "6770", "name": "力積電", "value": 45619, "pnl": -7794, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "2367", "name": "燿華", "value": 44751, "pnl": -26049, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "6182", "name": "合晶", "value": 41618, "pnl": -15062, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "4991", "name": "環宇-KY", "value": 41317, "pnl": -13460, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "2345", "name": "智邦", "value": 40647, "pnl": -5868, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "2337", "name": "旺宏", "value": 39626, "pnl": -25566, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "6831", "name": "邁科", "value": 38983, "pnl": -48226, "group": "個股", "industry": "AI 伺服器水冷液冷散熱"}, {"code": "3081", "name": "聯亞", "value": 35469, "pnl": -3661, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "2313", "name": "華通", "value": 33527, "pnl": -7571, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "3483", "name": "力致", "value": 32201, "pnl": -12133, "group": "個股", "industry": "AI 伺服器水冷液冷散熱"}, {"code": "2478", "name": "大毅", "value": 23596, "pnl": -5344, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "3149", "name": "正達", "value": 20491, "pnl": -10052, "group": "個股", "industry": "先進封裝新題材 / 玻璃基板 (TGV)"}, {"code": "2408", "name": "南亞科", "value": 18960, "pnl": -5039, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "6173", "name": "信昌電", "value": 12274, "pnl": -3430, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "3042", "name": "晶技", "value": 11814, "pnl": -5129, "group": "個股", "industry": "電子核心關鍵組件 / 石英元件"}, {"code": "8289", "name": "泰藝", "value": 9581, "pnl": -5243, "group": "個股", "industry": "電子核心關鍵組件 / 石英元件"}, {"code": "8936", "name": "國統", "value": 9530, "pnl": -506, "group": "個股", "industry": "資通訊與半導體基礎建設 / 水利工程"}, {"code": "2344", "name": "華邦電", "value": 7691, "pnl": -3224, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "3324", "name": "雙鴻", "value": 1355, "pnl": 190, "group": "個股", "industry": "AI 伺服器水冷液冷散熱"}, {"code": "6488", "name": "環球晶", "value": 823, "pnl": -155, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "6213", "name": "聯茂", "value": 774, "pnl": 234, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "4971", "name": "IET-KY", "value": 448, "pnl": -152, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "3450", "name": "聯鈞", "value": 422, "pnl": -107, "group": "個股", "industry": "CPO 光通訊 / 矽光子網通設備"}, {"code": "2492", "name": "華新科", "value": 366, "pnl": 41, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}, {"code": "1815", "name": "富喬", "value": 138, "pnl": 0, "group": "個股", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板"}, {"code": "2303", "name": "聯電", "value": 124, "pnl": -20, "group": "個股", "industry": "半導體記憶體 / 基礎晶圓代工與封測"}, {"code": "3673", "name": "TPK-KY", "value": 72, "pnl": -14, "group": "個股", "industry": "先進封裝新題材 / 玻璃基板 (TGV)"}, {"code": "6806", "name": "森葳能源", "value": 1, "pnl": -99441, "group": "個股", "industry": "核心成熟製程 / 被動與電子組件"}], "stock_count": 64, "realized_today": 189150, "history": []}
 </script>
 <script>
 (function () {
@@ -276,6 +303,13 @@
   const hasCash = C != null && A;
   let target = lsGet('wl_target', 70);
   let shot = lsGet('wl_shot', 100000);
+  // 市值水位/成本水位切換(2026/10/23新增)，記在各自手機
+  let basis = 'value';
+  try { if (localStorage.getItem('wl_basis') === 'cost') basis = 'cost'; } catch (e) {}
+  function cur() {
+    if (basis === 'cost') return { S: DATA.stock_cost || 0, A: DATA.total_assets_cost, lvl: DATA.water_level_cost, sName: '投入成本', lvName: '成本水位' };
+    return { S: V, A: A, lvl: DATA.water_level, sName: '股票市值', lvName: '市值水位' };
+  }
 
   $('hdr-sub').textContent = `持股資料日期 ${DATA.date || '—'}｜現金查詢 ${DATA.cash_date || '—'}`;
 
@@ -290,7 +324,7 @@
     const W = 320, H = 190, cx = 160, cy = 165, r = 125, sw = 26;
     const pt = (p, rr) => { const a = Math.PI * (1 - p / 100); return [cx + rr * Math.cos(a), cy - rr * Math.sin(a)]; };
     const arc = (p0, p1, rr) => { const [x0, y0] = pt(p0, rr), [x1, y1] = pt(p1, rr); return `M${x0},${y0} A${rr},${rr} 0 0 1 ${x1},${y1}`; };
-    const lvl = DATA.water_level;
+    const lvl = cur().lvl;
     let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="持股水位儀表">`;
     s += `<path d="${arc(0, 100, r)}" fill="none" stroke="${css('--surface-2')}" stroke-width="${sw}" stroke-linecap="butt"/>`;
     if (lvl != null) s += `<path d="${arc(0, Math.max(0.5, Math.min(100, lvl)), r)}" fill="none" stroke="${css('--accent')}" stroke-width="${sw}"/>`;
@@ -301,7 +335,7 @@
     const [tx0, ty0] = pt(target, r - sw / 2 - 5), [tx1, ty1] = pt(target, r + sw / 2 + 5);
     s += `<line x1="${tx0}" y1="${ty0}" x2="${tx1}" y2="${ty1}" stroke="${css('--target')}" stroke-width="3" stroke-linecap="round"/>`;
     s += `<text x="${cx}" y="${cy - 30}" font-size="40" font-weight="800" text-anchor="middle" fill="${css('--text-primary')}">${lvl != null ? lvl.toFixed(1) + '%' : '—'}</text>`;
-    s += `<text x="${cx}" y="${cy - 6}" font-size="12.5" text-anchor="middle" fill="${css('--text-secondary')}">目前持股水位</text>`;
+    s += `<text x="${cx}" y="${cy - 6}" font-size="12.5" text-anchor="middle" fill="${css('--text-secondary')}">目前${cur().lvName}</text>`;
     s += `</svg>`;
     $('gauge').innerHTML = s;
     if (lvl != null) {
@@ -312,8 +346,8 @@
 
   function renderKpis() {
     const tiles = [
-      { lbl: '總兵力（總資產）', val: fmt(A), hint: '股票市值＋可用現金' },
-      { lbl: '已上場（股票市值）', val: fmt(V), hint: `${DATA.stock_count || 0} 檔持股，含稅費口徑` },
+      { lbl: basis === 'cost' ? '總兵力（成本口徑）' : '總兵力（總資產）', val: fmt(cur().A), hint: cur().sName + '＋可用現金' },
+      { lbl: `已上場（${cur().sName}）`, val: fmt(cur().S), hint: `${DATA.stock_count || 0} 檔持股，${basis === 'cost' ? '不看漲跌' : '含稅費口徑'}` },
       { lbl: '可動用彈藥（可用現金）', val: fmt(C), hint: '交割戶餘額＋未交割款' },
       { lbl: '有效曝險（參考）', val: pct(DATA.effective_exposure), hint: '槓桿ETF算2倍、債券ETF不算' },
     ];
@@ -330,6 +364,7 @@
 
   function renderOrder() {
     if (!hasCash) { $('order-box').innerHTML = `<div class="order"><div class="desc">沒有現金資料，沒辦法計算。</div></div>`; $('shot-result').textContent = ''; return; }
+    const { A, S: V } = cur();
     const goal = A * target / 100;
     const gap = goal - V;
     let html;
@@ -426,13 +461,14 @@
 
   // ---- 8. 歷史 ----
   function renderHistory() {
-    const H = DATA.history || [];
+    const key = basis === 'cost' ? 'water_level_cost' : 'water_level';
+    const H = (DATA.history || []).filter(d => d[key] != null).map(d => ({ ...d, lv: d[key] }));
     if (H.length < 2) {
-      $('hist').innerHTML = `<div class="hist-empty">目前累積 ${H.length} 天${H.length ? `（${H[0].date} 水位 ${pct(H[0].water_level)}）` : ''}。從 2026-10-23 開始每天記一筆，滿兩天以上才畫得出趨勢線。</div>`;
+      $('hist').innerHTML = `<div class="hist-empty">目前累積 ${H.length} 天${H.length ? `（${H[0].date} 水位 ${pct(H[0].lv)}）` : ''}。從 2026-10-23 開始每天記一筆，滿兩天以上才畫得出趨勢線。</div>`;
       return;
     }
     const W = 640, Ht = 220, L = 40, R = 14, T = 14, B = 30;
-    const vals = H.map(d => d.water_level).concat([target]);
+    const vals = H.map(d => d.lv).concat([target]);
     let lo = Math.max(0, Math.floor((Math.min(...vals) - 5) / 10) * 10), hi = Math.min(100, Math.ceil((Math.max(...vals) + 5) / 10) * 10);
     if (hi - lo < 20) { hi = Math.min(100, lo + 20); }
     const x = i => L + (W - L - R) * (H.length === 1 ? 0.5 : i / (H.length - 1));
@@ -443,8 +479,8 @@
       s += `<text x="${L - 6}" y="${y(v) + 4}" font-size="11" text-anchor="end" fill="${css('--text-muted')}">${v}%</text>`;
     }
     s += `<line x1="${L}" x2="${W - R}" y1="${y(target)}" y2="${y(target)}" stroke="${css('--target')}" stroke-width="1.5" stroke-dasharray="5 4"/>`;
-    s += `<path d="${H.map((d, i) => (i ? 'L' : 'M') + x(i) + ',' + y(d.water_level)).join(' ')}" fill="none" stroke="${css('--accent')}" stroke-width="2" stroke-linejoin="round"/>`;
-    H.forEach((d, i) => { s += `<circle cx="${x(i)}" cy="${y(d.water_level)}" r="${H.length > 40 ? 0 : 3}" fill="${css('--accent')}"/>`; });
+    s += `<path d="${H.map((d, i) => (i ? 'L' : 'M') + x(i) + ',' + y(d.lv)).join(' ')}" fill="none" stroke="${css('--accent')}" stroke-width="2" stroke-linejoin="round"/>`;
+    H.forEach((d, i) => { s += `<circle cx="${x(i)}" cy="${y(d.lv)}" r="${H.length > 40 ? 0 : 3}" fill="${css('--accent')}"/>`; });
     const step = Math.max(1, Math.ceil(H.length / 6));
     H.forEach((d, i) => { if (i % step === 0 || i === H.length - 1) s += `<text x="${x(i)}" y="${Ht - 8}" font-size="10.5" text-anchor="middle" fill="${css('--text-muted')}">${d.date.slice(5)}</text>`; });
     s += `<line id="hx" x1="0" x2="0" y1="${T}" y2="${Ht - B}" stroke="${css('--text-muted')}" stroke-width="1" style="display:none"/>`;
@@ -458,7 +494,7 @@
       const i = Math.max(0, Math.min(H.length - 1, Math.round((p.x - L) / ((W - L - R) / (H.length - 1)))));
       const d = H[i];
       hx.setAttribute('x1', x(i)); hx.setAttribute('x2', x(i)); hx.style.display = '';
-      tip.innerHTML = `<b>${d.date}</b><br>水位 ${pct(d.water_level)}｜有效曝險 ${pct(d.effective_exposure)}<br>股票 ${fmt(d.stock_value)}<br>現金 ${fmt(d.cash)}`;
+      tip.innerHTML = `<b>${d.date}</b><br>市值水位 ${pct(d.water_level)}｜成本水位 ${pct(d.water_level_cost)}<br>有效曝險 ${pct(d.effective_exposure)}<br>股票市值 ${fmt(d.stock_value)}｜成本 ${fmt(d.stock_cost)}<br>現金 ${fmt(d.cash)}`;
       tip.style.display = 'block';
       tip.style.left = Math.min(window.innerWidth - 190, e.clientX + 12) + 'px';
       tip.style.top = (e.clientY + 12) + 'px';
@@ -479,7 +515,23 @@
     <p>• 有效曝險只是參考：代碼結尾L的槓桿ETF算2倍，結尾B的債券ETF算0倍，其他都算1倍。</p>
     <p>• 戰損推演假設所有股票一起照大盤同比例下跌，實際上個股跌幅會不一樣，只是讓你知道大概的承受力。</p>`;
 
-  renderKpis(); renderPresets(); renderGauge(); renderOrder(); renderCash(); renderGroups(); renderStress(); renderBars(); renderHistory();
+  function renderBasis() {
+    $('basis-toggle').querySelectorAll('.basis-btn').forEach(b => b.classList.toggle('is-active', b.dataset.basis === basis));
+    $('formula').textContent = basis === 'cost'
+      ? '成本水位＝投入成本 ÷（投入成本＋可用現金），不看股票漲跌。黑色刻度是你設定的目標水位。'
+      : '市值水位＝股票市值 ÷（股票市值＋可用現金）。黑色刻度是你設定的目標水位。';
+  }
+  $('basis-toggle').querySelectorAll('.basis-btn').forEach(b => b.addEventListener('click', () => {
+    basis = b.dataset.basis;
+    try { localStorage.setItem('wl_basis', basis); } catch (e) {}
+    renderBasis(); renderGauge(); renderKpis(); renderOrder(); renderHistory();
+  }));
+  $('info-btn').addEventListener('click', () => {
+    const open = $('explain').classList.toggle('open');
+    $('info-btn').textContent = open ? '收起說明' : '？兩者差在哪';
+  });
+
+  renderBasis(); renderKpis(); renderPresets(); renderGauge(); renderOrder(); renderCash(); renderGroups(); renderStress(); renderBars(); renderHistory();
 })();
 </script>
 </body>
