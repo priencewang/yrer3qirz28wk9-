@@ -213,7 +213,7 @@
         <p>＝<b>當初買股票投入的錢</b> ÷（投入成本＋可用現金），不管股票後來漲跌。回答「<b>我準備的子彈已經打出去多少</b>」，適合看資金額度、紀律控管。</p>
         <h3>兩者什麼時候會差很多</h3>
         <p>股票大漲後：成本水位會<b>低估</b>你的風險（例：用一半的錢買股票、股票漲一倍，成本水位還是50%，市值水位已經67%）。股票大跌後：成本水位會<b>高估</b>你的風險，讓你以為還很滿。帳面損益不大時兩者幾乎一樣。</p>
-        <p class="muted" style="font-size:12px;">註：成本用永豐的「付出成本」，ETF配息後永豐會把成本往下調，所以會比真正掏出去的錢略少一點。下方第4～7區、戰損推演一律用市值計算，不受切換影響。</p>
+        <p class="muted" style="font-size:12px;">註：成本用永豐的「付出成本」，ETF配息後永豐會把成本往下調，所以會比真正掏出去的錢略少一點。第4、6、7區也會跟著切換；只有戰損推演固定用市值（推演的是股價下跌，成本不會跟著跌）。</p>
       </div>
       <div class="gauge-wrap" id="gauge"></div>
       <div class="gauge-caption" id="gauge-caption"></div>
@@ -259,7 +259,7 @@
 
     <div class="card">
       <h2>6 · 各產業佔總資產</h2>
-      <p class="sub">分母是總資產（含現金），跟單日持股明細的圓餅圖（只算股票）不一樣，看的是「每一路兵力佔全軍多少」。</p>
+      <p class="sub">分母含現金（市值水位用總資產、成本水位用投入成本＋現金），跟單日持股明細的圓餅圖（只算股票）不一樣，看的是「每一路兵力佔全軍多少」。</p>
       <div class="bars" id="ind-bars"></div>
     </div>
 
@@ -339,6 +339,7 @@
   const mktV = () => scope === 'swing' ? (DATA.swing_value || 0) : V;
   const mktA = () => C != null ? mktV() + C : null;
   const inScope = (h) => scope !== 'swing' || !h.long_term;
+  const amt = (h) => basis === 'cost' ? (h.cost || 0) : h.value;
 
   $('hdr-sub').textContent = `持股資料日期 ${DATA.date || '—'}｜現金查詢 ${DATA.cash_date || '—'}`;
 
@@ -444,17 +445,20 @@
 
   // ---- 4. 兵力配置 ----
   function renderGroups() {
-    const g = scope === 'swing' ? { '個股': DATA.swing_value || 0 } : (DATA.groups || {});
+    // 2026/10/24：第4、6、7區也跟著「市值/成本」切換(戰損推演仍固定用市值)
+    const g = {};
+    (DATA.holdings || []).filter(inScope).forEach(h => { const k = scope === 'swing' ? '個股' : h.group; g[k] = (g[k] || 0) + amt(h); });
     const vals = { '現金': C || 0, ...g };
-    const denom = hasCash ? mktA() : mktV();
+    const denom = hasCash ? cur().A : cur().S;
     const shown = GROUPS.filter(x => x.key in vals);
     $('stack').innerHTML = shown.filter(x => vals[x.key] > 0).map(x =>
       `<div style="width:${vals[x.key] / denom * 100}%;background:var(${x.var})" title="${x.key}"></div>`).join('');
     $('group-legend').innerHTML = shown.map(x => {
       const cnt = x.key === '現金' ? '' : `（${scope === 'swing' ? DATA.swing_count : (DATA.group_counts || {})[x.key] || 0}檔）`;
       return `<div class="row"><span class="sw" style="background:var(${x.var})"></span><span class="nm">${scope === 'swing' && x.key === '個股' ? '波段個股' : x.key}${cnt}</span><span class="amt">${fmt(vals[x.key])}</span><span class="pct">${pct((vals[x.key] || 0) / denom * 100)}</span></div>`;
-    }).join('') + (scope === 'swing' ? `<div class="row muted"><span class="sw" style="background:transparent;border:1px dashed var(--text-muted)"></span><span class="nm">長線資產（ETF＋台積電，不計入）</span><span class="amt">${fmt(DATA.long_term_value)}</span><span class="pct">—</span></div>` : '');
+    }).join('') + (scope === 'swing' ? `<div class="row muted"><span class="sw" style="background:transparent;border:1px dashed var(--text-muted)"></span><span class="nm">長線資產（ETF＋台積電，不計入）</span><span class="amt">${fmt(basis === 'cost' ? DATA.long_term_cost : DATA.long_term_value)}</span><span class="pct">—</span></div>` : '');
     if (scope === 'swing') { $('exposure-note').innerHTML = '波段個股都算1倍曝險，所以波段水位就是波段曝險。'; return; }
+    if (basis === 'cost') { $('exposure-note').innerHTML = '目前是成本口徑：金額是當初投入的成本，佔比的分母是「投入成本＋可用現金」。有效曝險只用市值算，切回市值水位才看得到。'; return; }
     if (hasCash) {
       $('exposure-note').innerHTML = `一般水位 <b>${pct(DATA.water_level)}</b>，有效曝險 <b>${pct(DATA.effective_exposure)}</b>。` +
         (DATA.effective_exposure > DATA.water_level ? '槓桿ETF讓實際承受的漲跌比帳面水位大。' : '債券ETF讓實際承受的漲跌比帳面水位小。');
@@ -487,14 +491,15 @@
   }
 
   function renderBars() {
-    const denom = hasCash ? mktA() : mktV();
+    const denom = hasCash ? cur().A : cur().S;
     const color = Object.fromEntries((DATA.industries || []).map(i => [i.name, i.color]));
     const ind = {};
-    (DATA.holdings || []).filter(inScope).forEach(h => { ind[h.industry] = (ind[h.industry] || 0) + h.value; });
+    (DATA.holdings || []).filter(inScope).forEach(h => { ind[h.industry] = (ind[h.industry] || 0) + amt(h); });
     const indItems = Object.entries(ind).map(([name, value]) => ({ name, value, color: color[name] || '#BFBFBF' })).filter(i => i.value > 1).sort((a, b) => b.value - a.value);
     bars($('ind-bars'), indItems, denom, i => i.color);
     const gColor = Object.fromEntries(GROUPS.map(x => [x.key, `var(${x.var})`]));
-    bars($('top-bars'), (DATA.holdings || []).filter(inScope).slice(0, 10).map(h => ({ ...h, name: `${h.name}（${h.group}）` })), denom, h => gColor[h.group]);
+    const top = (DATA.holdings || []).filter(inScope).map(h => ({ ...h, value: amt(h), name: `${h.name}（${h.group}）` })).sort((a, b) => b.value - a.value).slice(0, 10);
+    bars($('top-bars'), top, denom, h => gColor[h.group]);
   }
 
   // ---- 8. 歷史 ----
@@ -563,7 +568,7 @@
   $('basis-toggle').querySelectorAll('.basis-btn').forEach(b => b.addEventListener('click', () => {
     basis = b.dataset.basis;
     try { localStorage.setItem('wl_basis', basis); } catch (e) {}
-    renderBasis(); renderGauge(); renderKpis(); renderOrder(); renderHistory();
+    renderBasis(); renderGauge(); renderKpis(); renderOrder(); renderGroups(); renderBars(); renderHistory();
   }));
   function renderScope() {
     $('scope-toggle').querySelectorAll('.basis-btn').forEach(b => b.classList.toggle('is-active', b.dataset.scope === scope));
