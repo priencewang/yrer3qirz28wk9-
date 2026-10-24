@@ -105,6 +105,10 @@
   .basis-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
   .basis-toggle { display: inline-flex; background: var(--surface-2); border-radius: 10px; padding: 3px; }
   .basis-btn { font-family: inherit; font-size: 13px; border: 0; background: transparent; color: var(--text-secondary); padding: 6px 14px; border-radius: 8px; cursor: pointer; }
+  .h2-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 2px; }
+  .h2-row h2 { margin: 0; }
+  .basis-toggle.mini { padding: 2px; border-radius: 8px; flex: 0 0 auto; }
+  .basis-toggle.mini .basis-btn { font-size: 12px; padding: 4px 10px; border-radius: 6px; }
   .basis-btn.is-active { background: var(--surface-1); color: var(--text-primary); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .info-btn { font-family: inherit; font-size: 12.5px; border: 1px solid var(--border); background: transparent; color: var(--accent); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
   .explain { display: none; background: var(--surface-2); border-radius: 10px; padding: 12px 14px; font-size: 13px; line-height: 1.7; margin-bottom: 12px; }
@@ -244,7 +248,7 @@
     </div>
 
     <div class="card">
-      <h2>4 · 兵力配置</h2>
+      <div class="h2-row"><h2>4 · 兵力配置</h2><div class="basis-toggle mini"><button class="basis-btn" data-basis="value">市值</button><button class="basis-btn" data-basis="cost">成本</button></div></div>
       <p class="sub">總資產裡各類部位各佔多少。槓桿ETF漲跌是大盤的2倍，債券ETF幾乎不跟股市連動，所以另外算一個「有效曝險」。</p>
       <div class="stack" id="stack"></div>
       <div class="legend" id="group-legend"></div>
@@ -258,13 +262,13 @@
     </div>
 
     <div class="card">
-      <h2>6 · 各產業佔總資產</h2>
+      <div class="h2-row"><h2>6 · 各產業佔總資產</h2><div class="basis-toggle mini"><button class="basis-btn" data-basis="value">市值</button><button class="basis-btn" data-basis="cost">成本</button></div></div>
       <p class="sub">分母含現金（市值水位用總資產、成本水位用投入成本＋現金），跟單日持股明細的圓餅圖（只算股票）不一樣，看的是「每一路兵力佔全軍多少」。</p>
       <div class="bars" id="ind-bars"></div>
     </div>
 
     <div class="card">
-      <h2>7 · 前十大部位佔總資產</h2>
+      <div class="h2-row"><h2>7 · 前十大部位佔總資產</h2><div class="basis-toggle mini"><button class="basis-btn" data-basis="value">市值</button><button class="basis-btn" data-basis="cost">成本</button></div></div>
       <p class="sub">單一部位太重，那一檔出事就會傷到整體。</p>
       <div class="bars" id="top-bars"></div>
     </div>
@@ -559,13 +563,13 @@
     <p>• 戰損推演假設所有股票一起照大盤同比例下跌，實際上個股跌幅會不一樣，只是讓你知道大概的承受力。</p>`;
 
   function renderBasis() {
-    $('basis-toggle').querySelectorAll('.basis-btn').forEach(b => b.classList.toggle('is-active', b.dataset.basis === basis));
+    document.querySelectorAll('.basis-btn[data-basis]').forEach(b => b.classList.toggle('is-active', b.dataset.basis === basis));
     const sw = scope === 'swing' ? '波段' : '';
     $('formula').textContent = (basis === 'cost'
       ? `${sw}成本水位＝${sw || '股票'}投入成本 ÷（${sw || '股票'}投入成本＋可用現金），不看股票漲跌。`
       : `${sw}市值水位＝${sw || '股票'}市值 ÷（${sw || '股票'}市值＋可用現金）。`) + (sw ? '長線資產（ETF＋台積電）不算。' : '') + '黑色刻度是你設定的目標水位。';
   }
-  $('basis-toggle').querySelectorAll('.basis-btn').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('.basis-btn[data-basis]').forEach(b => b.addEventListener('click', () => {
     basis = b.dataset.basis;
     try { localStorage.setItem('wl_basis', basis); } catch (e) {}
     renderBasis(); renderGauge(); renderKpis(); renderOrder(); renderGroups(); renderBars(); renderHistory();
