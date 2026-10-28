@@ -20,6 +20,7 @@
     --accent:      #2a78d6;
     --gain:        #e34948; /* 台股慣例：紅=漲/賺 */
     --loss:        #2a78d6; /* 台股慣例：藍=跌/賠 */
+    --pnl-pos:     #a82424; /* 損益正數用略深紅，跟較昨日徽章的紅區分 */
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) .viz-root {
@@ -35,6 +36,7 @@
       --accent:      #3987e5;
       --gain:        #e66767;
       --loss:        #3987e5;
+      --pnl-pos:     #c23b3b;
     }
   }
   :root[data-theme="dark"] .viz-root {
@@ -50,6 +52,7 @@
     --accent:      #3987e5;
     --gain:        #e66767;
     --loss:        #3987e5;
+    --pnl-pos:     #c23b3b;
   }
 
   .viz-root {
@@ -86,6 +89,12 @@
   .basis-btn:hover:not(.is-active) { color: var(--text-primary); }
   .basis-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+  .metric-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .metric-bar .basis-toggle { margin-bottom: 0; }
+  .sort-btn { font-family: inherit; font-size: 12px; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); padding: 6px 11px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+  .sort-btn.is-active { background: var(--gridline); color: var(--text-primary); font-weight: 700; }
+  .sort-btn:disabled { opacity: .4; cursor: default; }
+  .sort-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .pie-layout { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
   .pie-svg-wrap { flex-shrink: 0; }
   .pie-selected-info { min-width: 130px; flex-shrink: 0; }
@@ -117,6 +126,9 @@
   .acc-btn .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
   .acc-btn .name { font-weight: 700; font-size: 14px; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .acc-btn .quick-val { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 13.5px; flex-shrink: 0; }
+  /* 2026/10/28 RAY要求：損益模式的數字，正數=略深紅、負數=藍(原本一律白色) */
+  .acc-btn .quick-val.pnl-up { color: var(--pnl-pos); }
+  .acc-btn .quick-val.pnl-down { color: var(--loss); }
   .acc-btn .count { color: var(--text-muted); font-size: 11.5px; flex-shrink: 0; }
   .acc-btn .delta-badge { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; flex-shrink: 0; white-space: nowrap; }
   .acc-btn .delta-badge.up { color: var(--gain); }
@@ -189,10 +201,13 @@
     <div class="card">
       <h2>2 · 完整持股明細</h2>
       <p class="sub">點產業分類展開持股，點股票名稱再展開完整欄位</p>
-      <div class="basis-toggle" id="metric-toggle">
-        <button class="basis-btn is-active" data-metric="pnl">損益</button>
-        <button class="basis-btn" data-metric="value">市值</button>
-        <button class="basis-btn" data-metric="cost_total">成本</button>
+      <div class="metric-bar">
+        <div class="basis-toggle" id="metric-toggle">
+          <button class="basis-btn is-active" data-metric="pnl">損益</button>
+          <button class="basis-btn" data-metric="value">市值</button>
+          <button class="basis-btn" data-metric="cost_total">成本</button>
+        </div>
+        <button class="sort-btn" id="delta-sort-btn" aria-pressed="false">較昨日 高→低</button>
       </div>
       <div id="category-list"></div>
     </div>
@@ -457,6 +472,7 @@
   }
 
   let metric = 'pnl'; // 'pnl'/'value'/'cost_total'，跟上方切換鈕連動
+  let sortByDelta = false; // 「較昨日 高→低」排序按鈕狀態
   // 2026/09/16新增：切換鈕跟旁邊的「較昨日」徽章要顯示哪個變化欄位是連動的——損益模式
   // 看N/O，成本模式看K/L；市值沒有對應的每日變化欄位可比對，就不顯示徽章。
   const DELTA_KEY = { pnl: 'pnl_change', cost_total: 'cost_change' };
@@ -471,16 +487,28 @@
 
     // 2026/09/17新增：RAY要求依目前切換鈕(損益/市值/成本)的數值由高至低排序，不再
     // 固定依產業編號1~11——顏色還是照原始類別索引(i)走，只有排列順序改變。
+    // 2026/10/28新增：「較昨日 高→低」按鈕開啟時，改依最右側的較昨日變化排序
+    // (產業依產業變化、產業內個股依個股變化)；沒有昨日資料的排最後。
+    const industryDeltaKey = DELTA_KEY_INDUSTRY[metric];
+    const stockDeltaKey = DELTA_KEY[metric];
+    const useDeltaSort = sortByDelta && !!stockDeltaKey;
+    const deltaOrNull = (v) => (v === null || v === undefined) ? null : v;
+    const byDesc = (va, vb) => (va === null) - (vb === null) || (vb || 0) - (va || 0);
     const categoryInfos = DATA.pie_categories
       .map((cat, i) => {
         const stocks = DATA.table_rows.filter(r => r.industry === cat);
         const total = stocks.reduce((s, r) => s + (r[metric] || 0), 0);
-        return { cat, i, stocks, total, color: DATA.pie_colors[i] };
+        // O產業損益變化／L產業成本變化都是整個產業族群共用的同一個數字(每檔股票的資料裡
+        // 都重複存了一份)，取任一筆非空值即可，不用加總；市值模式沒有對應變化欄位
+        const catDelta = industryDeltaKey
+          ? stocks.map(r => r[industryDeltaKey]).find(v => v !== null && v !== undefined)
+          : undefined;
+        return { cat, i, stocks, total, catDelta, color: DATA.pie_colors[i] };
       })
       .filter(info => info.stocks.length)
-      .sort((a, b) => b.total - a.total);
+      .sort((a, b) => useDeltaSort ? byDesc(deltaOrNull(a.catDelta), deltaOrNull(b.catDelta)) : b.total - a.total);
 
-    categoryInfos.forEach(({ cat, i, stocks, total, color }) => {
+    categoryInfos.forEach(({ cat, i, stocks, total, catDelta, color }) => {
       const catItem = document.createElement('details');
       catItem.className = 'acc-item';
       catItem.dataset.cat = cat;
@@ -490,13 +518,8 @@
       catSummary.className = 'acc-btn';
       // 成本本身沒有「賺賠」語意(投入多少就是多少)，不套紅漲藍跌上色，避免RAY誤以為
       // 紅色代表獲利；損益/市值維持原本依正負上色
-      const catColorCls = metric === 'cost_total' ? '' : (total >= 0 ? 'pnl-up' : 'pnl-down');
-      // O產業損益變化／L產業成本變化都是整個產業族群共用的同一個數字(每檔股票的資料裡
-      // 都重複存了一份)，取任一筆非空值即可，不用加總；市值模式沒有對應變化欄位
-      const industryDeltaKey = DELTA_KEY_INDUSTRY[metric];
-      const catDelta = industryDeltaKey
-        ? stocks.map(r => r[industryDeltaKey]).find(v => v !== null && v !== undefined)
-        : undefined;
+      // 2026/10/28起只有損益模式上色(正=略深紅/負=藍)；市值恆為正數，上色沒意義
+      const catColorCls = metric === 'pnl' ? (total >= 0 ? 'pnl-up' : 'pnl-down') : '';
       catSummary.innerHTML =
         '<span class="swatch" style="background:' + color + '"></span>' +
         '<span class="name"></span><span class="count"></span>' +
@@ -509,7 +532,9 @@
 
       const sub = document.createElement('div');
       sub.className = 'acc-sublist';
-      stocks.slice().sort((a, b) => (b[metric] || 0) - (a[metric] || 0)).forEach(r => {
+      stocks.slice().sort((a, b) => useDeltaSort
+        ? byDesc(deltaOrNull(a[stockDeltaKey]), deltaOrNull(b[stockDeltaKey]))
+        : (b[metric] || 0) - (a[metric] || 0)).forEach(r => {
         const stockItem = document.createElement('details');
         stockItem.className = 'acc-item';
         stockItem.dataset.code = r.code;
@@ -517,8 +542,7 @@
 
         const stockSummary = document.createElement('summary');
         stockSummary.className = 'acc-btn';
-        const valColor = metric === 'cost_total' ? '' : ((r[metric] || 0) >= 0 ? 'pnl-up' : 'pnl-down');
-        const stockDeltaKey = DELTA_KEY[metric];
+        const valColor = metric === 'pnl' ? ((r[metric] || 0) >= 0 ? 'pnl-up' : 'pnl-down') : '';
         const stockDelta = stockDeltaKey ? r[stockDeltaKey] : undefined;
         stockSummary.innerHTML =
           '<span class="name"></span><span class="quick-val ' + valColor + '"></span>' +
@@ -540,8 +564,24 @@
     if (!btn) return;
     document.querySelectorAll('#metric-toggle .basis-btn').forEach(b => b.classList.toggle('is-active', b === btn));
     metric = btn.dataset.metric;
+    syncSortBtn();
     renderCategoryList();
   });
+
+  // 市值模式沒有較昨日數字，排序按鈕停用
+  const sortBtn = document.getElementById('delta-sort-btn');
+  function syncSortBtn() {
+    const usable = !!DELTA_KEY[metric];
+    sortBtn.disabled = !usable;
+    sortBtn.classList.toggle('is-active', sortByDelta && usable);
+    sortBtn.setAttribute('aria-pressed', String(sortByDelta && usable));
+  }
+  sortBtn.addEventListener('click', () => {
+    sortByDelta = !sortByDelta;
+    syncSortBtn();
+    renderCategoryList();
+  });
+  syncSortBtn();
 
   // ---------- 今日已實現損益(2026/10/13新增，RAY要求) ----------
   // 背景：股票賣掉後成本+獲利一併變現、從「目前庫存」清單消失，單靠上面的市值/成本/
