@@ -21,6 +21,8 @@
     --gain:        #e34948; /* 台股慣例：紅=漲/賺 */
     --loss:        #2a78d6; /* 台股慣例：藍=跌/賠 */
     --pnl-pos:     #a82424; /* 損益正數用略深紅，跟較昨日徽章的紅區分 */
+    --trend-value: #6b4fd8; /* 資產走勢：總市值線 */
+    --trend-cum:   #d08a1e; /* 資產走勢：累積已實現損益線 */
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) .viz-root {
@@ -37,6 +39,8 @@
       --gain:        #e66767;
       --loss:        #3987e5;
       --pnl-pos:     #c23b3b;
+      --trend-value: #a08cf0;
+      --trend-cum:   #e8a948;
     }
   }
   :root[data-theme="dark"] .viz-root {
@@ -53,6 +57,8 @@
     --gain:        #e66767;
     --loss:        #3987e5;
     --pnl-pos:     #c23b3b;
+    --trend-value: #a08cf0;
+    --trend-cum:   #e8a948;
   }
 
   .viz-root {
@@ -154,6 +160,57 @@
   .detail-field .f-value.pnl-up { color: var(--gain); }
   .detail-field .f-value.pnl-down { color: var(--loss); }
 
+  /* 資產走勢卡片(2026/11/03新增) */
+  .trend-card { position: relative; overflow: hidden; }
+  .trend-card::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 150px; pointer-events: none;
+    background: radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--trend-value) 14%, transparent), transparent 70%);
+  }
+  .trend-head { position: relative; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .trend-head .basis-toggle { margin-bottom: 0; }
+  .trend-since { position: relative; font-size: 11px; color: var(--text-muted); margin: 10px 0 6px; }
+  .trend-stats { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 14px; }
+  @media (max-width: 720px) { .trend-stats { grid-template-columns: repeat(2, 1fr); } }
+  .tstat { border-radius: 10px; padding: 10px 12px; background: var(--page-plane); border: 1px solid var(--border); min-width: 0; }
+  .tstat .tl { font-size: 11.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .tstat .tl i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; box-sizing: border-box; }
+  .tstat .tv { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 3px; white-space: nowrap; }
+  .tstat .td { font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; color: var(--text-muted); }
+  .tstat .td.up, .tstat .tv.up { color: var(--gain); }
+  .tstat .td.down, .tstat .tv.down { color: var(--loss); }
+  .trend-chart { position: relative; touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+  .trend-chart svg { display: block; overflow: visible; }
+  .trend-sub-title { font-size: 12.5px; font-weight: 700; margin: 16px 0 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .trend-sub-title span { font-weight: 400; color: var(--text-muted); font-size: 11.5px; }
+  .trend-legend { display: flex; gap: 6px 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-secondary); margin-top: 6px; }
+  .trend-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .trend-legend .ln { width: 16px; height: 3px; border-radius: 2px; display: inline-block; }
+  .trend-legend .ln.dash { background: repeating-linear-gradient(90deg, var(--text-muted) 0 4px, transparent 4px 7px); height: 2px; }
+  .trend-legend .bx { width: 12px; height: 10px; border-radius: 3px; display: inline-block; }
+  .trend-tip {
+    position: absolute; z-index: 5; pointer-events: none; opacity: 0; transition: opacity .12s;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 6px 22px rgba(0,0,0,.16); padding: 9px 11px; font-size: 12px; min-width: 172px;
+  }
+  .trend-tip.show { opacity: 1; }
+  .trend-tip .tt-date { font-weight: 700; margin-bottom: 5px; }
+  .trend-tip .tt-row { display: flex; justify-content: space-between; gap: 14px; line-height: 1.65; }
+  .trend-tip .tt-row b { font-variant-numeric: tabular-nums; }
+  .trend-tip .tt-row .k { color: var(--text-secondary); display: inline-flex; align-items: center; gap: 5px; }
+  .trend-tip .tt-row .k i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .trend-tip .up { color: var(--gain); }
+  .trend-tip .down { color: var(--loss); }
+  .trend-tip hr { border: none; border-top: 1px solid var(--gridline); margin: 4px 0; }
+  @keyframes trendDraw { to { stroke-dashoffset: 0; } }
+  @keyframes trendFade { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes trendGrow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  .t-anim-line { animation: trendDraw 1.1s cubic-bezier(.4,0,.2,1) forwards; }
+  .t-anim-fade { opacity: 0; animation: trendFade .9s .35s ease forwards; }
+  .t-anim-bar { transform-box: fill-box; transform: scaleY(0); animation: trendGrow .6s cubic-bezier(.3,1.3,.5,1) forwards; }
+  @media (prefers-reduced-motion: reduce) {
+    .t-anim-line, .t-anim-fade, .t-anim-bar { animation: none; opacity: 1; transform: none; stroke-dashoffset: 0 !important; }
+  }
+
   .empty-hint { text-align: center; color: var(--text-muted); font-size: 13px; padding: 20px 0; }
 
   .footnote { font-size: 11.5px; color: var(--text-muted); line-height: 1.7; margin-top: 22px; border-top: 1px solid var(--gridline); padding-top: 14px; }
@@ -183,6 +240,38 @@
     </div>
 
     <div class="kpi-row" id="kpi-row"></div>
+
+    <!-- 資產走勢(2026/11/03新增，RAY要求)：沒有trend資料時整張卡片由JS移除 -->
+    <div class="card trend-card" id="trend-card">
+      <div class="trend-head">
+        <div>
+          <h2>資產走勢</h2>
+          <p class="sub" id="trend-sub"></p>
+        </div>
+        <div class="basis-toggle" id="trend-range">
+          <button class="basis-btn is-active" data-range="all">全部</button>
+          <button class="basis-btn" data-range="30">近1月</button>
+          <button class="basis-btn" data-range="14">近2週</button>
+        </div>
+      </div>
+      <div class="trend-since" id="trend-since"></div>
+      <div class="trend-stats" id="trend-stats"></div>
+      <div class="trend-chart" id="trend-main"></div>
+      <div class="trend-legend">
+        <span><i class="ln" style="background:var(--trend-value)"></i>總市值</span>
+        <span><i class="ln dash"></i>總成本</span>
+        <span><i class="bx" style="background:color-mix(in srgb, var(--gain) 32%, transparent)"></i>帳上賺（市值高於成本）</span>
+        <span><i class="bx" style="background:color-mix(in srgb, var(--loss) 32%, transparent)"></i>帳上賠</span>
+      </div>
+      <div class="trend-sub-title">已實現損益 <span id="trend-rp-note"></span></div>
+      <div class="trend-chart" id="trend-rp"></div>
+      <div class="trend-legend">
+        <span><i class="bx" style="background:var(--gain)"></i>當天賣出賺</span>
+        <span><i class="bx" style="background:var(--loss)"></i>當天賣出賠</span>
+        <span><i class="ln" style="background:var(--trend-cum)"></i>累積</span>
+      </div>
+      <div class="trend-tip" id="trend-tip"></div>
+    </div>
 
     <div class="card">
       <h2>1 · 產業配置佔比</h2>
@@ -220,7 +309,7 @@
 </div>
 
 <script type="application/json" id="snapshot-data">
-{"date": "2026-11-03", "source_file": "每日庫存20261103.xlsx", "kpi": {"total_value": 6608537, "total_cost": 7361678, "total_pnl": -753141, "stock_count": 64, "total_value_change": -405873, "total_cost_change": 0, "stock_count_change": 0}, "pie_categories": ["半導體 / 先進製程設備與晶圓代工", "核心戰略 (ABF載板四雄)", "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "半導體記憶體 / 基礎晶圓代工與封測", "CPO 光通訊 / 矽光子網通設備", "AI 伺服器水冷液冷散熱", "先進封裝新題材 / 玻璃基板 (TGV)", "電子核心關鍵組件 / 石英元件", "核心成熟製程 / 被動與電子組件", "資通訊與半導體基礎建設 / 水利工程", "ETF 核心配置（不與個股混編）"], "pie_colors": ["#9DC3E6", "#FFD966", "#C6A0DC", "#7FD1C1", "#F4A6C0", "#C9D96B", "#F8B26A", "#B3B3E6", "#D9B38C", "#8ACBE0", "#BFBFBF"], "pie_value": {"半導體 / 先進製程設備與晶圓代工": 14.1, "核心戰略 (ABF載板四雄)": 9.97, "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板": 7.62, "半導體記憶體 / 基礎晶圓代工與封測": 4.29, "CPO 光通訊 / 矽光子網通設備": 6.69, "AI 伺服器水冷液冷散熱": 0.93, "先進封裝新題材 / 玻璃基板 (TGV)": 1.81, "電子核心關鍵組件 / 石英元件": 0.27, "核心成熟製程 / 被動與電子組件": 5.9, "資通訊與半導體基礎建設 / 水利工程": 3.13, "ETF 核心配置（不與個股混編）": 45.28}, "pie_cost": {"半導體 / 先進製程設備與晶圓代工": 11.2, "核心戰略 (ABF載板四雄)": 11.31, "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板": 9.41, "半導體記憶體 / 基礎晶圓代工與封測": 5.58, "CPO 光通訊 / 矽光子網通設備": 8.91, "AI 伺服器水冷液冷散熱": 1.8, "先進封裝新題材 / 玻璃基板 (TGV)": 2.42, "電子核心關鍵組件 / 石英元件": 0.43, "核心成熟製程 / 被動與電子組件": 9.14, "資通訊與半導體基礎建設 / 水利工程": 4.01, "ETF 核心配置（不與個股混編）": 35.79}, "table_rows": [{"code": "009816", "name": "凱基台灣TOP50", "industry": "ETF 核心配置（不與個股混編）", "shares": 60000, "price": 15.04, "cost_avg": 10.58, "cost_total": 634800, "pnl": 265614, "value": 900414, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -31126, "industry_pnl_change": -116996}, {"code": "2330", "name": "台積電", "industry": "半導體 / 先進製程設備與晶圓代工", "shares": 300, "price": 2295, "cost_avg": 1466.28, "cost_total": 439884, "pnl": 245574, "value": 685458, "industry_cost": 824457, "industry_ratio": 11.2, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -10453, "industry_pnl_change": -34035}, {"code": "00830", "name": "國泰費城半導體", "industry": "ETF 核心配置（不與個股混編）", "shares": 8000, "price": 75.5, "cost_avg": 57.39, "cost_total": 459120, "pnl": 143442, "value": 602562, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -29928, "industry_pnl_change": -116996}, {"code": "00964", "name": "中信亞太高股息", "industry": "ETF 核心配置（不與個股混編）", "shares": 15000, "price": 14.18, "cost_avg": 11.64, "cost_total": 174600, "pnl": 37587, "value": 212187, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3891, "industry_pnl_change": -116996}, {"code": "00924", "name": "復華S&P500成長", "industry": "ETF 核心配置（不與個股混編）", "shares": 8000, "price": 32.47, "cost_avg": 30.9, "cost_total": 247200, "pnl": 11900, "value": 259100, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3991, "industry_pnl_change": -116996}, {"code": "3324", "name": "雙鴻", "industry": "AI 伺服器水冷液冷散熱", "shares": 1, "price": 1320, "cost_avg": 1165, "cost_total": 1165, "pnl": 151, "value": 1316, "industry_cost": 132708, "industry_ratio": 1.8, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -74, "industry_pnl_change": -4184}, {"code": "6213", "name": "聯茂", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 1, "price": 600, "cost_avg": 540, "cost_total": 540, "pnl": 58, "value": 598, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -56, "industry_pnl_change": -48624}, {"code": "1815", "name": "富喬", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 1, "price": 131, "cost_avg": 138, "cost_total": 138, "pnl": -8, "value": 130, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -8, "industry_pnl_change": -48624}, {"code": "3673", "name": "TPK-KY", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 1, "price": 64.6, "cost_avg": 86, "cost_total": 86, "pnl": -23, "value": 63, "industry_cost": 178110, "industry_ratio": 2.42, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -6, "industry_pnl_change": -10818}, {"code": "2303", "name": "聯電", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 1, "price": 103, "cost_avg": 144, "cost_total": 144, "pnl": -42, "value": 102, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7, "industry_pnl_change": -25692}, {"code": "3450", "name": "聯鈞", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 1, "price": 375, "cost_avg": 529, "cost_total": 529, "pnl": -156, "value": 373, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -40, "industry_pnl_change": -43049}, {"code": "4971", "name": "IET-KY", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 1, "price": 389, "cost_avg": 600, "cost_total": 600, "pnl": -213, "value": 387, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -43, "industry_pnl_change": -43049}, {"code": "6488", "name": "環球晶", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 1, "price": 685, "cost_avg": 978, "cost_total": 978, "pnl": -296, "value": 682, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -75, "industry_pnl_change": -25692}, {"code": "8936", "name": "國統", "industry": "資通訊與半導體基礎建設 / 水利工程", "shares": 200, "price": 43.1, "cost_avg": 50.18, "cost_total": 10036, "pnl": -1452, "value": 8584, "industry_cost": 295420, "industry_ratio": 4.01, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -209, "industry_pnl_change": -10399}, {"code": "00725B", "name": "國泰投資級公司債", "industry": "ETF 核心配置（不與個股混編）", "shares": 6000, "price": 33.82, "cost_avg": 34.08, "cost_total": 204480, "pnl": -1851, "value": 202629, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -120, "industry_pnl_change": -116996}, {"code": "2344", "name": "華邦電", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 50, "price": 146, "cost_avg": 218.3, "cost_total": 10915, "pnl": -3646, "value": 7269, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -796, "industry_pnl_change": -25692}, {"code": "009802", "name": "富邦旗艦50", "industry": "ETF 核心配置（不與個股混編）", "shares": 7000, "price": 18.26, "cost_avg": 18.83, "cost_total": 131810, "pnl": -4320, "value": 127490, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4819, "industry_pnl_change": -116996}, {"code": "2408", "name": "南亞科", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 46, "price": 411, "cost_avg": 521.72, "cost_total": 23999, "pnl": -5175, "value": 18824, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2084, "industry_pnl_change": -25692}, {"code": "6173", "name": "信昌電", "industry": "核心成熟製程 / 被動與電子組件", "shares": 42, "price": 237, "cost_avg": 373.9, "cost_total": 15704, "pnl": -5793, "value": 9911, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -752, "industry_pnl_change": -40015}, {"code": "3081", "name": "聯亞", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 15, "price": 2175, "cost_avg": 2608.67, "cost_total": 39130, "pnl": -6648, "value": 32482, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3584, "industry_pnl_change": -43049}, {"code": "3042", "name": "晶技", "industry": "電子核心關鍵組件 / 石英元件", "shares": 70, "price": 147, "cost_avg": 242.04, "cost_total": 16943, "pnl": -6697, "value": 10246, "industry_cost": 31767, "industry_ratio": 0.43, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1114, "industry_pnl_change": -1892}, {"code": "8289", "name": "泰藝", "industry": "電子核心關鍵組件 / 石英元件", "shares": 200, "price": 39.55, "cost_avg": 74.12, "cost_total": 14824, "pnl": -6948, "value": 7876, "industry_cost": 31767, "industry_ratio": 0.43, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -778, "industry_pnl_change": -1892}, {"code": "00402A", "name": "主動安聯美國科技", "industry": "ETF 核心配置（不與個股混編）", "shares": 7000, "price": 8.99, "cost_avg": 10, "cost_total": 70000, "pnl": -7221, "value": 62779, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2373, "industry_pnl_change": -116996}, {"code": "2478", "name": "大毅", "industry": "核心成熟製程 / 被動與電子組件", "shares": 200, "price": 102.5, "cost_avg": 144.7, "cost_total": 28940, "pnl": -8530, "value": 20410, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1991, "industry_pnl_change": -40015}, {"code": "00685L", "name": "群益臺灣加權正2", "industry": "ETF 核心配置（不與個股混編）", "shares": 13000, "price": 10.31, "cost_avg": 11.02, "cost_total": 143260, "pnl": -9546, "value": 133714, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -11153, "industry_pnl_change": -116996}, {"code": "3149", "name": "正達", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 300, "price": 64.1, "cost_avg": 101.81, "cost_total": 30543, "pnl": -11396, "value": 19147, "industry_cost": 178110, "industry_ratio": 2.42, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1224, "industry_pnl_change": -10818}, {"code": "6770", "name": "力積電", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 690, "price": 60.2, "cost_avg": 77.41, "cost_total": 53413, "pnl": -12056, "value": 41357, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3504, "industry_pnl_change": -25692}, {"code": "00985A", "name": "主動野村台灣50", "industry": "ETF 核心配置（不與個股混編）", "shares": 6000, "price": 18.98, "cost_avg": 20.97, "cost_total": 125820, "pnl": -12222, "value": 113598, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4908, "industry_pnl_change": -116996}, {"code": "2345", "name": "智邦", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 23, "price": 1495, "cost_avg": 2022.39, "cost_total": 46515, "pnl": -12280, "value": 34235, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2748, "industry_pnl_change": -43049}, {"code": "2492", "name": "華新科", "industry": "核心成熟製程 / 被動與電子組件", "shares": 121, "price": 320.5, "cost_avg": 424.77, "cost_total": 51397, "pnl": -12787, "value": 38610, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4276, "industry_pnl_change": -40015}, {"code": "2313", "name": "華通", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 150, "price": 186, "cost_avg": 273.99, "cost_total": 41098, "pnl": -13321, "value": 27777, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2838, "industry_pnl_change": -48624}, {"code": "6207", "name": "雷科", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 401, "price": 111, "cost_avg": 143.74, "cost_total": 57640, "pnl": -13325, "value": 44315, "industry_cost": 178110, "industry_ratio": 2.42, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3993, "industry_pnl_change": -10818}, {"code": "8358", "name": "金居", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 122, "price": 376, "cost_avg": 494.95, "cost_total": 60384, "pnl": -14714, "value": 45670, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5040, "industry_pnl_change": -48624}, {"code": "00407A", "name": "主動凱基台灣", "industry": "ETF 核心配置（不與個股混編）", "shares": 10000, "price": 8.38, "cost_avg": 9.87, "cost_total": 98700, "pnl": -15142, "value": 83558, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5486, "industry_pnl_change": -116996}, {"code": "3483", "name": "力致", "industry": "AI 伺服器水冷液冷散熱", "shares": 350, "price": 80.7, "cost_avg": 126.67, "cost_total": 44334, "pnl": -16213, "value": 28121, "industry_cost": 132708, "industry_ratio": 1.8, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -560, "industry_pnl_change": -4184}, {"code": "4991", "name": "環宇-KY", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 100, "price": 367.5, "cost_avg": 547.77, "cost_total": 54777, "pnl": -18189, "value": 36588, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2390, "industry_pnl_change": -43049}, {"code": "2308", "name": "台達電", "industry": "資通訊與半導體基礎建設 / 水利工程", "shares": 30, "price": 1270, "cost_avg": 1942.73, "cost_total": 58282, "pnl": -20350, "value": 37932, "industry_cost": 295420, "industry_ratio": 4.01, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2540, "industry_pnl_change": -10399}, {"code": "4977", "name": "眾達-KY", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 576, "price": 167, "cost_avg": 202.35, "cost_total": 116554, "pnl": -20783, "value": 95771, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -9176, "industry_pnl_change": -43049}, {"code": "8039", "name": "台虹", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 200, "price": 220.5, "cost_avg": 323.46, "cost_total": 64692, "pnl": -20786, "value": 43906, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4182, "industry_pnl_change": -48624}, {"code": "3234", "name": "光環", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 381, "price": 136, "cost_avg": 192.24, "cost_total": 73243, "pnl": -21656, "value": 51587, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4931, "industry_pnl_change": -43049}, {"code": "00631L", "name": "元大台灣50正2", "industry": "ETF 核心配置（不與個股混編）", "shares": 3000, "price": 31.48, "cost_avg": 38.68, "cost_total": 116040, "pnl": -21813, "value": 94227, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7033, "industry_pnl_change": -116996}, {"code": "6182", "name": "合晶", "industry": "核心成熟製程 / 被動與電子組件", "shares": 400, "price": 85.3, "cost_avg": 141.7, "cost_total": 56680, "pnl": -22710, "value": 33970, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3506, "industry_pnl_change": -40015}, {"code": "6147", "name": "頎邦", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 420, "price": 172.5, "cost_avg": 234.81, "cost_total": 98620, "pnl": -26488, "value": 72132, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7945, "industry_pnl_change": -25692}, {"code": "6187", "name": "萬潤", "industry": "半導體 / 先進製程設備與晶圓代工", "shares": 86, "price": 1080, "cost_avg": 1384.64, "cost_total": 119079, "pnl": -26607, "value": 92472, "industry_cost": 824457, "industry_ratio": 11.2, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -9846, "industry_pnl_change": -34035}, {"code": "00935", "name": "野村臺灣新科技50", "industry": "ETF 核心配置（不與個股混編）", "shares": 4000, "price": 50.1, "cost_avg": 57.15, "cost_total": 228600, "pnl": -28694, "value": 199906, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -12168, "industry_pnl_change": -116996}, {"code": "2337", "name": "旺宏", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 400, "price": 88.3, "cost_avg": 162.98, "cost_total": 65192, "pnl": -30026, "value": 35166, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3146, "industry_pnl_change": -25692}, {"code": "4908", "name": "前鼎", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 359, "price": 164, "cost_avg": 251.66, "cost_total": 90346, "pnl": -31729, "value": 58617, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5896, "industry_pnl_change": -43049}, {"code": "2367", "name": "燿華", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 1000, "price": 38.6, "cost_avg": 70.8, "cost_total": 70800, "pnl": -32371, "value": 38429, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2887, "industry_pnl_change": -48624}, {"code": "8021", "name": "尖點", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 221, "price": 382.5, "cost_avg": 529.56, "cost_total": 117033, "pnl": -32873, "value": 84160, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -9241, "industry_pnl_change": -48624}, {"code": "3026", "name": "禾伸堂", "industry": "核心成熟製程 / 被動與電子組件", "shares": 125, "price": 574, "cost_avg": 836.78, "cost_total": 104598, "pnl": -33164, "value": 71434, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7840, "industry_pnl_change": -40015}, {"code": "8064", "name": "東捷", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 562, "price": 100.5, "cost_avg": 159.86, "cost_total": 89841, "pnl": -33610, "value": 56231, "industry_cost": 178110, "industry_ratio": 2.42, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5595, "industry_pnl_change": -10818}, {"code": "4958", "name": "臻鼎-KY", "industry": "核心戰略 (ABF載板四雄)", "shares": 273, "price": 443, "cost_avg": 565.16, "cost_total": 154289, "pnl": -33882, "value": 120407, "industry_cost": 832493, "industry_ratio": 11.31, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -11959, "industry_pnl_change": -70169}, {"code": "3037", "name": "欣興", "industry": "核心戰略 (ABF載板四雄)", "shares": 197, "price": 902, "cost_avg": 1113.16, "cost_total": 219293, "pnl": -42381, "value": 176912, "industry_cost": 832493, "industry_ratio": 11.31, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -18633, "industry_pnl_change": -70169}, {"code": "8046", "name": "南電", "industry": "核心戰略 (ABF載板四雄)", "shares": 151, "price": 1070, "cost_avg": 1366.8, "cost_total": 206387, "pnl": -45529, "value": 160858, "industry_cost": 832493, "industry_ratio": 11.31, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -17290, "industry_pnl_change": -70169}, {"code": "4979", "name": "華星光", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 201, "price": 383.5, "cost_avg": 621.44, "cost_total": 124909, "pnl": -48166, "value": 76743, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -8507, "industry_pnl_change": -43049}, {"code": "6239", "name": "力成", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 454, "price": 239.5, "cost_avg": 347.62, "cost_total": 157819, "pnl": -49563, "value": 108256, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -8135, "industry_pnl_change": -25692}, {"code": "3189", "name": "景碩", "industry": "核心戰略 (ABF載板四雄)", "shares": 246, "price": 819, "cost_avg": 1026.52, "cost_total": 252524, "pnl": -51940, "value": 200584, "industry_cost": 832493, "industry_ratio": 11.31, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -22287, "industry_pnl_change": -70169}, {"code": "3163", "name": "波若威", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 120, "price": 462, "cost_avg": 909.45, "cost_total": 109134, "pnl": -53937, "value": 55197, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5734, "industry_pnl_change": -43049}, {"code": "6831", "name": "邁科", "industry": "AI 伺服器水冷液冷散熱", "shares": 99, "price": 327.5, "cost_avg": 880.9, "cost_total": 87209, "pnl": -54929, "value": 32280, "industry_cost": 132708, "industry_ratio": 1.8, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3550, "industry_pnl_change": -4184}, {"code": "6139", "name": "亞翔", "industry": "資通訊與半導體基礎建設 / 水利工程", "shares": 265, "price": 608, "cost_avg": 856.99, "cost_total": 227102, "pnl": -66690, "value": 160412, "industry_cost": 295420, "industry_ratio": 4.01, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7650, "industry_pnl_change": -10399}, {"code": "2368", "name": "金像電", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 272, "price": 970, "cost_avg": 1243.58, "cost_total": 338254, "pnl": -75576, "value": 262678, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -24372, "industry_pnl_change": -48624}, {"code": "6806", "name": "森葳能源", "industry": "核心成熟製程 / 被動與電子組件", "shares": 671, "price": 0, "cost_avg": 148.2, "cost_total": 99442, "pnl": -99441, "value": 1, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": null, "industry_pnl_change": -40015}, {"code": "2327", "name": "國巨*", "industry": "核心成熟製程 / 被動與電子組件", "shares": 478, "price": 453, "cost_avg": 660.62, "cost_total": 315776, "pnl": -100190, "value": 215586, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -21650, "industry_pnl_change": -40015}, {"code": "3583", "name": "辛耘", "industry": "半導體 / 先進製程設備與晶圓代工", "shares": 300, "price": 516, "cost_avg": 884.98, "cost_total": 265494, "pnl": -111373, "value": 154121, "industry_cost": 824457, "industry_ratio": 11.2, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -13736, "industry_pnl_change": -34035}], "excluded": [], "realized_pnl": {"has_sales": false, "records": [], "total": null}}
+{"date": "2026-11-03", "source_file": "每日庫存20261103.xlsx", "kpi": {"total_value": 6608537, "total_cost": 7361678, "total_pnl": -753141, "stock_count": 64, "total_value_change": -405873, "total_cost_change": 0, "stock_count_change": 0}, "pie_categories": ["半導體 / 先進製程設備與晶圓代工", "核心戰略 (ABF載板四雄)", "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "半導體記憶體 / 基礎晶圓代工與封測", "CPO 光通訊 / 矽光子網通設備", "AI 伺服器水冷液冷散熱", "先進封裝新題材 / 玻璃基板 (TGV)", "電子核心關鍵組件 / 石英元件", "核心成熟製程 / 被動與電子組件", "資通訊與半導體基礎建設 / 水利工程", "ETF 核心配置（不與個股混編）"], "pie_colors": ["#9DC3E6", "#FFD966", "#C6A0DC", "#7FD1C1", "#F4A6C0", "#C9D96B", "#F8B26A", "#B3B3E6", "#D9B38C", "#8ACBE0", "#BFBFBF"], "pie_value": {"半導體 / 先進製程設備與晶圓代工": 14.1, "核心戰略 (ABF載板四雄)": 9.97, "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板": 7.62, "半導體記憶體 / 基礎晶圓代工與封測": 4.29, "CPO 光通訊 / 矽光子網通設備": 6.69, "AI 伺服器水冷液冷散熱": 0.93, "先進封裝新題材 / 玻璃基板 (TGV)": 1.81, "電子核心關鍵組件 / 石英元件": 0.27, "核心成熟製程 / 被動與電子組件": 5.9, "資通訊與半導體基礎建設 / 水利工程": 3.13, "ETF 核心配置（不與個股混編）": 45.28}, "pie_cost": {"半導體 / 先進製程設備與晶圓代工": 11.2, "核心戰略 (ABF載板四雄)": 11.31, "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板": 9.41, "半導體記憶體 / 基礎晶圓代工與封測": 5.58, "CPO 光通訊 / 矽光子網通設備": 8.91, "AI 伺服器水冷液冷散熱": 1.8, "先進封裝新題材 / 玻璃基板 (TGV)": 2.42, "電子核心關鍵組件 / 石英元件": 0.43, "核心成熟製程 / 被動與電子組件": 9.14, "資通訊與半導體基礎建設 / 水利工程": 4.01, "ETF 核心配置（不與個股混編）": 35.79}, "table_rows": [{"code": "009816", "name": "凱基台灣TOP50", "industry": "ETF 核心配置（不與個股混編）", "shares": 60000, "price": 15.04, "cost_avg": 10.58, "cost_total": 634800, "pnl": 265614, "value": 900414, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -31126, "industry_pnl_change": -116996}, {"code": "2330", "name": "台積電", "industry": "半導體 / 先進製程設備與晶圓代工", "shares": 300, "price": 2295, "cost_avg": 1466.28, "cost_total": 439884, "pnl": 245574, "value": 685458, "industry_cost": 824457, "industry_ratio": 11.2, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -10453, "industry_pnl_change": -34035}, {"code": "00830", "name": "國泰費城半導體", "industry": "ETF 核心配置（不與個股混編）", "shares": 8000, "price": 75.5, "cost_avg": 57.39, "cost_total": 459120, "pnl": 143442, "value": 602562, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -29928, "industry_pnl_change": -116996}, {"code": "00964", "name": "中信亞太高股息", "industry": "ETF 核心配置（不與個股混編）", "shares": 15000, "price": 14.18, "cost_avg": 11.64, "cost_total": 174600, "pnl": 37587, "value": 212187, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3891, "industry_pnl_change": -116996}, {"code": "00924", "name": "復華S&P500成長", "industry": "ETF 核心配置（不與個股混編）", "shares": 8000, "price": 32.47, "cost_avg": 30.9, "cost_total": 247200, "pnl": 11900, "value": 259100, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3991, "industry_pnl_change": -116996}, {"code": "3324", "name": "雙鴻", "industry": "AI 伺服器水冷液冷散熱", "shares": 1, "price": 1320, "cost_avg": 1165, "cost_total": 1165, "pnl": 151, "value": 1316, "industry_cost": 132708, "industry_ratio": 1.8, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -74, "industry_pnl_change": -4184}, {"code": "6213", "name": "聯茂", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 1, "price": 600, "cost_avg": 540, "cost_total": 540, "pnl": 58, "value": 598, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -56, "industry_pnl_change": -48624}, {"code": "1815", "name": "富喬", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 1, "price": 131, "cost_avg": 138, "cost_total": 138, "pnl": -8, "value": 130, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -8, "industry_pnl_change": -48624}, {"code": "3673", "name": "TPK-KY", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 1, "price": 64.6, "cost_avg": 86, "cost_total": 86, "pnl": -23, "value": 63, "industry_cost": 178110, "industry_ratio": 2.42, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -6, "industry_pnl_change": -10818}, {"code": "2303", "name": "聯電", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 1, "price": 103, "cost_avg": 144, "cost_total": 144, "pnl": -42, "value": 102, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7, "industry_pnl_change": -25692}, {"code": "3450", "name": "聯鈞", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 1, "price": 375, "cost_avg": 529, "cost_total": 529, "pnl": -156, "value": 373, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -40, "industry_pnl_change": -43049}, {"code": "4971", "name": "IET-KY", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 1, "price": 389, "cost_avg": 600, "cost_total": 600, "pnl": -213, "value": 387, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -43, "industry_pnl_change": -43049}, {"code": "6488", "name": "環球晶", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 1, "price": 685, "cost_avg": 978, "cost_total": 978, "pnl": -296, "value": 682, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -75, "industry_pnl_change": -25692}, {"code": "8936", "name": "國統", "industry": "資通訊與半導體基礎建設 / 水利工程", "shares": 200, "price": 43.1, "cost_avg": 50.18, "cost_total": 10036, "pnl": -1452, "value": 8584, "industry_cost": 295420, "industry_ratio": 4.01, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -209, "industry_pnl_change": -10399}, {"code": "00725B", "name": "國泰投資級公司債", "industry": "ETF 核心配置（不與個股混編）", "shares": 6000, "price": 33.82, "cost_avg": 34.08, "cost_total": 204480, "pnl": -1851, "value": 202629, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -120, "industry_pnl_change": -116996}, {"code": "2344", "name": "華邦電", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 50, "price": 146, "cost_avg": 218.3, "cost_total": 10915, "pnl": -3646, "value": 7269, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -796, "industry_pnl_change": -25692}, {"code": "009802", "name": "富邦旗艦50", "industry": "ETF 核心配置（不與個股混編）", "shares": 7000, "price": 18.26, "cost_avg": 18.83, "cost_total": 131810, "pnl": -4320, "value": 127490, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4819, "industry_pnl_change": -116996}, {"code": "2408", "name": "南亞科", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 46, "price": 411, "cost_avg": 521.72, "cost_total": 23999, "pnl": -5175, "value": 18824, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2084, "industry_pnl_change": -25692}, {"code": "6173", "name": "信昌電", "industry": "核心成熟製程 / 被動與電子組件", "shares": 42, "price": 237, "cost_avg": 373.9, "cost_total": 15704, "pnl": -5793, "value": 9911, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -752, "industry_pnl_change": -40015}, {"code": "3081", "name": "聯亞", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 15, "price": 2175, "cost_avg": 2608.67, "cost_total": 39130, "pnl": -6648, "value": 32482, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3584, "industry_pnl_change": -43049}, {"code": "3042", "name": "晶技", "industry": "電子核心關鍵組件 / 石英元件", "shares": 70, "price": 147, "cost_avg": 242.04, "cost_total": 16943, "pnl": -6697, "value": 10246, "industry_cost": 31767, "industry_ratio": 0.43, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1114, "industry_pnl_change": -1892}, {"code": "8289", "name": "泰藝", "industry": "電子核心關鍵組件 / 石英元件", "shares": 200, "price": 39.55, "cost_avg": 74.12, "cost_total": 14824, "pnl": -6948, "value": 7876, "industry_cost": 31767, "industry_ratio": 0.43, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -778, "industry_pnl_change": -1892}, {"code": "00402A", "name": "主動安聯美國科技", "industry": "ETF 核心配置（不與個股混編）", "shares": 7000, "price": 8.99, "cost_avg": 10, "cost_total": 70000, "pnl": -7221, "value": 62779, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2373, "industry_pnl_change": -116996}, {"code": "2478", "name": "大毅", "industry": "核心成熟製程 / 被動與電子組件", "shares": 200, "price": 102.5, "cost_avg": 144.7, "cost_total": 28940, "pnl": -8530, "value": 20410, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1991, "industry_pnl_change": -40015}, {"code": "00685L", "name": "群益臺灣加權正2", "industry": "ETF 核心配置（不與個股混編）", "shares": 13000, "price": 10.31, "cost_avg": 11.02, "cost_total": 143260, "pnl": -9546, "value": 133714, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -11153, "industry_pnl_change": -116996}, {"code": "3149", "name": "正達", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 300, "price": 64.1, "cost_avg": 101.81, "cost_total": 30543, "pnl": -11396, "value": 19147, "industry_cost": 178110, "industry_ratio": 2.42, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -1224, "industry_pnl_change": -10818}, {"code": "6770", "name": "力積電", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 690, "price": 60.2, "cost_avg": 77.41, "cost_total": 53413, "pnl": -12056, "value": 41357, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3504, "industry_pnl_change": -25692}, {"code": "00985A", "name": "主動野村台灣50", "industry": "ETF 核心配置（不與個股混編）", "shares": 6000, "price": 18.98, "cost_avg": 20.97, "cost_total": 125820, "pnl": -12222, "value": 113598, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4908, "industry_pnl_change": -116996}, {"code": "2345", "name": "智邦", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 23, "price": 1495, "cost_avg": 2022.39, "cost_total": 46515, "pnl": -12280, "value": 34235, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2748, "industry_pnl_change": -43049}, {"code": "2492", "name": "華新科", "industry": "核心成熟製程 / 被動與電子組件", "shares": 121, "price": 320.5, "cost_avg": 424.77, "cost_total": 51397, "pnl": -12787, "value": 38610, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4276, "industry_pnl_change": -40015}, {"code": "2313", "name": "華通", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 150, "price": 186, "cost_avg": 273.99, "cost_total": 41098, "pnl": -13321, "value": 27777, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2838, "industry_pnl_change": -48624}, {"code": "6207", "name": "雷科", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 401, "price": 111, "cost_avg": 143.74, "cost_total": 57640, "pnl": -13325, "value": 44315, "industry_cost": 178110, "industry_ratio": 2.42, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3993, "industry_pnl_change": -10818}, {"code": "8358", "name": "金居", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 122, "price": 376, "cost_avg": 494.95, "cost_total": 60384, "pnl": -14714, "value": 45670, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5040, "industry_pnl_change": -48624}, {"code": "00407A", "name": "主動凱基台灣", "industry": "ETF 核心配置（不與個股混編）", "shares": 10000, "price": 8.38, "cost_avg": 9.87, "cost_total": 98700, "pnl": -15142, "value": 83558, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5486, "industry_pnl_change": -116996}, {"code": "3483", "name": "力致", "industry": "AI 伺服器水冷液冷散熱", "shares": 350, "price": 80.7, "cost_avg": 126.67, "cost_total": 44334, "pnl": -16213, "value": 28121, "industry_cost": 132708, "industry_ratio": 1.8, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -560, "industry_pnl_change": -4184}, {"code": "4991", "name": "環宇-KY", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 100, "price": 367.5, "cost_avg": 547.77, "cost_total": 54777, "pnl": -18189, "value": 36588, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2390, "industry_pnl_change": -43049}, {"code": "2308", "name": "台達電", "industry": "資通訊與半導體基礎建設 / 水利工程", "shares": 30, "price": 1270, "cost_avg": 1942.73, "cost_total": 58282, "pnl": -20350, "value": 37932, "industry_cost": 295420, "industry_ratio": 4.01, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2540, "industry_pnl_change": -10399}, {"code": "4977", "name": "眾達-KY", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 576, "price": 167, "cost_avg": 202.35, "cost_total": 116554, "pnl": -20783, "value": 95771, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -9176, "industry_pnl_change": -43049}, {"code": "8039", "name": "台虹", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 200, "price": 220.5, "cost_avg": 323.46, "cost_total": 64692, "pnl": -20786, "value": 43906, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4182, "industry_pnl_change": -48624}, {"code": "3234", "name": "光環", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 381, "price": 136, "cost_avg": 192.24, "cost_total": 73243, "pnl": -21656, "value": 51587, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -4931, "industry_pnl_change": -43049}, {"code": "00631L", "name": "元大台灣50正2", "industry": "ETF 核心配置（不與個股混編）", "shares": 3000, "price": 31.48, "cost_avg": 38.68, "cost_total": 116040, "pnl": -21813, "value": 94227, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7033, "industry_pnl_change": -116996}, {"code": "6182", "name": "合晶", "industry": "核心成熟製程 / 被動與電子組件", "shares": 400, "price": 85.3, "cost_avg": 141.7, "cost_total": 56680, "pnl": -22710, "value": 33970, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3506, "industry_pnl_change": -40015}, {"code": "6147", "name": "頎邦", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 420, "price": 172.5, "cost_avg": 234.81, "cost_total": 98620, "pnl": -26488, "value": 72132, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7945, "industry_pnl_change": -25692}, {"code": "6187", "name": "萬潤", "industry": "半導體 / 先進製程設備與晶圓代工", "shares": 86, "price": 1080, "cost_avg": 1384.64, "cost_total": 119079, "pnl": -26607, "value": 92472, "industry_cost": 824457, "industry_ratio": 11.2, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -9846, "industry_pnl_change": -34035}, {"code": "00935", "name": "野村臺灣新科技50", "industry": "ETF 核心配置（不與個股混編）", "shares": 4000, "price": 50.1, "cost_avg": 57.15, "cost_total": 228600, "pnl": -28694, "value": 199906, "industry_cost": 2634430, "industry_ratio": 35.79, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -12168, "industry_pnl_change": -116996}, {"code": "2337", "name": "旺宏", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 400, "price": 88.3, "cost_avg": 162.98, "cost_total": 65192, "pnl": -30026, "value": 35166, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3146, "industry_pnl_change": -25692}, {"code": "4908", "name": "前鼎", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 359, "price": 164, "cost_avg": 251.66, "cost_total": 90346, "pnl": -31729, "value": 58617, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5896, "industry_pnl_change": -43049}, {"code": "2367", "name": "燿華", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 1000, "price": 38.6, "cost_avg": 70.8, "cost_total": 70800, "pnl": -32371, "value": 38429, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -2887, "industry_pnl_change": -48624}, {"code": "8021", "name": "尖點", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 221, "price": 382.5, "cost_avg": 529.56, "cost_total": 117033, "pnl": -32873, "value": 84160, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -9241, "industry_pnl_change": -48624}, {"code": "3026", "name": "禾伸堂", "industry": "核心成熟製程 / 被動與電子組件", "shares": 125, "price": 574, "cost_avg": 836.78, "cost_total": 104598, "pnl": -33164, "value": 71434, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7840, "industry_pnl_change": -40015}, {"code": "8064", "name": "東捷", "industry": "先進封裝新題材 / 玻璃基板 (TGV)", "shares": 562, "price": 100.5, "cost_avg": 159.86, "cost_total": 89841, "pnl": -33610, "value": 56231, "industry_cost": 178110, "industry_ratio": 2.42, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5595, "industry_pnl_change": -10818}, {"code": "4958", "name": "臻鼎-KY", "industry": "核心戰略 (ABF載板四雄)", "shares": 273, "price": 443, "cost_avg": 565.16, "cost_total": 154289, "pnl": -33882, "value": 120407, "industry_cost": 832493, "industry_ratio": 11.31, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -11959, "industry_pnl_change": -70169}, {"code": "3037", "name": "欣興", "industry": "核心戰略 (ABF載板四雄)", "shares": 197, "price": 902, "cost_avg": 1113.16, "cost_total": 219293, "pnl": -42381, "value": 176912, "industry_cost": 832493, "industry_ratio": 11.31, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -18633, "industry_pnl_change": -70169}, {"code": "8046", "name": "南電", "industry": "核心戰略 (ABF載板四雄)", "shares": 151, "price": 1070, "cost_avg": 1366.8, "cost_total": 206387, "pnl": -45529, "value": 160858, "industry_cost": 832493, "industry_ratio": 11.31, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -17290, "industry_pnl_change": -70169}, {"code": "4979", "name": "華星光", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 201, "price": 383.5, "cost_avg": 621.44, "cost_total": 124909, "pnl": -48166, "value": 76743, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -8507, "industry_pnl_change": -43049}, {"code": "6239", "name": "力成", "industry": "半導體記憶體 / 基礎晶圓代工與封測", "shares": 454, "price": 239.5, "cost_avg": 347.62, "cost_total": 157819, "pnl": -49563, "value": 108256, "industry_cost": 411080, "industry_ratio": 5.58, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -8135, "industry_pnl_change": -25692}, {"code": "3189", "name": "景碩", "industry": "核心戰略 (ABF載板四雄)", "shares": 246, "price": 819, "cost_avg": 1026.52, "cost_total": 252524, "pnl": -51940, "value": 200584, "industry_cost": 832493, "industry_ratio": 11.31, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -22287, "industry_pnl_change": -70169}, {"code": "3163", "name": "波若威", "industry": "CPO 光通訊 / 矽光子網通設備", "shares": 120, "price": 462, "cost_avg": 909.45, "cost_total": 109134, "pnl": -53937, "value": 55197, "industry_cost": 655737, "industry_ratio": 8.91, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -5734, "industry_pnl_change": -43049}, {"code": "6831", "name": "邁科", "industry": "AI 伺服器水冷液冷散熱", "shares": 99, "price": 327.5, "cost_avg": 880.9, "cost_total": 87209, "pnl": -54929, "value": 32280, "industry_cost": 132708, "industry_ratio": 1.8, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -3550, "industry_pnl_change": -4184}, {"code": "6139", "name": "亞翔", "industry": "資通訊與半導體基礎建設 / 水利工程", "shares": 265, "price": 608, "cost_avg": 856.99, "cost_total": 227102, "pnl": -66690, "value": 160412, "industry_cost": 295420, "industry_ratio": 4.01, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -7650, "industry_pnl_change": -10399}, {"code": "2368", "name": "金像電", "industry": "PCB 產業鏈 / 銅箔基板 (CCL) 與高階硬板", "shares": 272, "price": 970, "cost_avg": 1243.58, "cost_total": 338254, "pnl": -75576, "value": 262678, "industry_cost": 692939, "industry_ratio": 9.41, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -24372, "industry_pnl_change": -48624}, {"code": "6806", "name": "森葳能源", "industry": "核心成熟製程 / 被動與電子組件", "shares": 671, "price": 0, "cost_avg": 148.2, "cost_total": 99442, "pnl": -99441, "value": 1, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": null, "industry_pnl_change": -40015}, {"code": "2327", "name": "國巨*", "industry": "核心成熟製程 / 被動與電子組件", "shares": 478, "price": 453, "cost_avg": 660.62, "cost_total": 315776, "pnl": -100190, "value": 215586, "industry_cost": 672537, "industry_ratio": 9.14, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -21650, "industry_pnl_change": -40015}, {"code": "3583", "name": "辛耘", "industry": "半導體 / 先進製程設備與晶圓代工", "shares": 300, "price": 516, "cost_avg": 884.98, "cost_total": 265494, "pnl": -111373, "value": 154121, "industry_cost": 824457, "industry_ratio": 11.2, "cost_change": null, "industry_cost_change": null, "ratio_change": null, "pnl_change": -13736, "industry_pnl_change": -34035}], "excluded": [], "realized_pnl": {"has_sales": false, "records": [], "total": null}, "trend": [{"date": "2026-09-16", "value": 8075754, "cost": 8118800, "realized_day": null, "realized_cum": null}, {"date": "2026-09-17", "value": 8011667, "cost": 8062141, "realized_day": null, "realized_cum": null}, {"date": "2026-09-18", "value": 8262343, "cost": 8091880, "realized_day": null, "realized_cum": null}, {"date": "2026-09-21", "value": 8345488, "cost": 8118602, "realized_day": null, "realized_cum": null}, {"date": "2026-09-22", "value": 8449832, "cost": 8118602, "realized_day": null, "realized_cum": null}, {"date": "2026-09-23", "value": 8497304, "cost": 8118602, "realized_day": null, "realized_cum": null}, {"date": "2026-09-24", "value": 8531890, "cost": 8118602, "realized_day": null, "realized_cum": null}, {"date": "2026-09-29", "value": 8531787, "cost": 8122819, "realized_day": null, "realized_cum": null}, {"date": "2026-09-30", "value": 8653351, "cost": 8136607, "realized_day": null, "realized_cum": null}, {"date": "2026-10-01", "value": 8778814, "cost": 8140949, "realized_day": null, "realized_cum": null}, {"date": "2026-10-03", "value": 8998821, "cost": 8140949, "realized_day": null, "realized_cum": null}, {"date": "2026-10-05", "value": 9220850, "cost": 8140949, "realized_day": null, "realized_cum": null}, {"date": "2026-10-06", "value": 9205068, "cost": 8134992, "realized_day": null, "realized_cum": null}, {"date": "2026-10-07", "value": 9418193, "cost": 8315412, "realized_day": null, "realized_cum": null}, {"date": "2026-10-08", "value": 9029152, "cost": 8058735, "realized_day": null, "realized_cum": null}, {"date": "2026-10-12", "value": 8694351, "cost": 7766899, "realized_day": null, "realized_cum": null}, {"date": "2026-10-13", "value": 6732872, "cost": 6195224, "realized_day": null, "realized_cum": null}, {"date": "2026-10-14", "value": 6829844, "cost": 6249713, "realized_day": null, "realized_cum": null}, {"date": "2026-10-15", "value": 6318073, "cost": 6047910, "realized_day": -14111, "realized_cum": -14111}, {"date": "2026-10-16", "value": 6610659, "cost": 6326471, "realized_day": 0, "realized_cum": -14111}, {"date": "2026-10-19", "value": 7011559, "cost": 6835267, "realized_day": 0, "realized_cum": -14111}, {"date": "2026-10-20", "value": 7012539, "cost": 6935879, "realized_day": -18838, "realized_cum": -32949}, {"date": "2026-10-21", "value": 7659424, "cost": 7474992, "realized_day": 1805, "realized_cum": -31144}, {"date": "2026-10-22", "value": 7215218, "cost": 7266592, "realized_day": -19483, "realized_cum": -50627}, {"date": "2026-10-27", "value": 7157365, "cost": 7266592, "realized_day": 0, "realized_cum": -50627}, {"date": "2026-10-28", "value": 7501310, "cost": 7359198, "realized_day": 0, "realized_cum": -50627}, {"date": "2026-10-29", "value": 7390226, "cost": 7410270, "realized_day": 0, "realized_cum": -50627}, {"date": "2026-10-30", "value": 7024025, "cost": 7335842, "realized_day": -13897, "realized_cum": -64524}, {"date": "2026-11-02", "value": 7014410, "cost": 7361678, "realized_day": 0, "realized_cum": -64524}, {"date": "2026-11-03", "value": 6608537, "cost": 7361678, "realized_day": 0, "realized_cum": -64524}]}
 </script>
 
 <script>
@@ -666,6 +755,317 @@
     });
   }
   renderRealizedPnl();
+
+  // ---------- 資產走勢(2026/11/03新增，RAY要求) ----------
+  // 每天一個點(x軸依交易日等距排，不照日曆，連假才不會空一大段)；總市值/總成本用
+  // 平滑曲線，兩線中間塗色＝帳上未實現損益(紅賺藍賠)；下方小圖是已實現損益(長條＝當天、
+  // 橘線＝累積)。手指或滑鼠移到圖上，兩張圖會一起顯示同一天的數字。
+  (function renderTrend() {
+    const card = document.getElementById('trend-card');
+    const ALL = DATA.trend || [];
+    if (ALL.length < 2) { card.remove(); return; }
+    const NS = 'http://www.w3.org/2000/svg';
+    const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+    const mainBox = document.getElementById('trend-main');
+    const rpBox = document.getElementById('trend-rp');
+    const tip = document.getElementById('trend-tip');
+    const mdLabel = (d) => +d.slice(5, 7) + '/' + +d.slice(8, 10);
+    // 軸上的數字用「萬」，最多留一位小數(例如-2.5萬)
+    const wan = (n, step) => {
+      if (Math.abs(n) < 1e-6) return '0';
+      return parseFloat((n / 10000).toFixed(1)) + '萬';
+    };
+    const signMoney = (n) => n === null || n === undefined ? '—' : (n > 0 ? '+' : n < 0 ? '−' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('en-US');
+    const dirCls = (n) => n > 0 ? 'up' : n < 0 ? 'down' : '';
+    const hasRpVal = (p) => p.realized_day !== null && p.realized_day !== undefined;
+    let range = 'all';
+    let P = ALL;
+    const rpStart = ALL.find(hasRpVal);
+
+    document.getElementById('trend-sub').textContent =
+      mdLabel(ALL[0].date) + ' 起每天收盤後的庫存總市值、總成本，跟賣出股票的已實現損益';
+    document.getElementById('trend-rp-note').textContent =
+      rpStart ? '（' + mdLabel(rpStart.date) + ' 起才有紀錄）' : '（還沒有紀錄）';
+
+    function niceTicks(lo, hi, n) {
+      const raw = (hi - lo) / n;
+      const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+      const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || raw;
+      const ticks = [];
+      for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-6; v += step) ticks.push(v);
+      return { ticks, step };
+    }
+    // 平滑但不會「衝過頭」的曲線(單調三次插值)，回傳每一段的控制點
+    function monoSegs(pts) {
+      const n = pts.length;
+      if (n < 2) return [];
+      const dx = [], m = [];
+      for (let i = 0; i < n - 1; i++) { dx.push(pts[i + 1][0] - pts[i][0]); m.push((pts[i + 1][1] - pts[i][1]) / dx[i]); }
+      const t = [m[0]];
+      for (let i = 1; i < n - 1; i++) t.push(m[i - 1] * m[i] <= 0 ? 0 : 3 * (dx[i - 1] + dx[i]) / ((2 * dx[i] + dx[i - 1]) / m[i - 1] + (dx[i] + 2 * dx[i - 1]) / m[i]));
+      t.push(m[n - 2]);
+      const r2 = (v) => +v.toFixed(2);
+      const segs = [];
+      for (let i = 0; i < n - 1; i++) {
+        const h = dx[i] / 3;
+        segs.push([pts[i], [r2(pts[i][0] + h), r2(pts[i][1] + h * t[i])], [r2(pts[i + 1][0] - h), r2(pts[i + 1][1] - h * t[i + 1])], pts[i + 1]]);
+      }
+      return segs;
+    }
+    const fwd = (segs) => segs.map(s => 'C' + s[1] + ' ' + s[2] + ' ' + s[3]).join('');
+    const back = (segs) => segs.slice().reverse().map(s => 'C' + s[2] + ' ' + s[1] + ' ' + s[0]).join('');
+    const linePath = (pts) => pts.length === 1 ? 'M' + pts[0] : 'M' + pts[0] + fwd(monoSegs(pts));
+
+    function animateLine(path) {
+      const len = path.getTotalLength();
+      path.style.strokeDasharray = len;
+      path.style.strokeDashoffset = len;
+      path.classList.add('t-anim-line');
+    }
+
+    function renderStats() {
+      const first = P[0], last = P[P.length - 1];
+      const unreal = last.value - last.cost;
+      const rpIn = P.filter(hasRpVal);
+      const rpSum = rpIn.reduce((a, p) => a + p.realized_day, 0);
+      document.getElementById('trend-since').textContent = '▲▼ 是跟 ' + mdLabel(first.date) + ' 比的變化';
+      const deltaTxt = (d) => (d > 0 ? '▲' : d < 0 ? '▼' : '') + '$' + Math.abs(Math.round(d)).toLocaleString('en-US');
+      const stats = [
+        { dot: '<i style="background:' + tok('--trend-value') + '"></i>', l: '總市值', v: fmtMoney(last.value), sub: deltaTxt(last.value - first.value), sc: dirCls(last.value - first.value) },
+        { dot: '<i style="border:2px dashed ' + tok('--text-muted') + '"></i>', l: '總成本', v: fmtMoney(last.cost), sub: deltaTxt(last.cost - first.cost), sc: '' },
+        { dot: '<i style="background:' + (unreal >= 0 ? tok('--gain') : tok('--loss')) + '"></i>', l: '帳上未實現', v: signMoney(unreal), vc: dirCls(unreal), sub: deltaTxt(unreal - (first.value - first.cost)), sc: dirCls(unreal - (first.value - first.cost)) },
+        { dot: '<i style="background:' + tok('--trend-cum') + '"></i>', l: '區間已實現', v: rpIn.length ? signMoney(rpSum) : '—', vc: dirCls(rpSum), sub: rpIn.length ? rpIn.filter(p => p.realized_day !== 0).length + ' 天有賣出' : '這段期間沒有紀錄', sc: '' },
+      ];
+      const box = document.getElementById('trend-stats');
+      box.innerHTML = '';
+      stats.forEach(s => {
+        const d = document.createElement('div');
+        d.className = 'tstat';
+        d.innerHTML = '<div class="tl">' + s.dot + s.l + '</div><div class="tv ' + (s.vc || '') + '">' + s.v + '</div>' +
+          '<div class="td ' + s.sc + '">' + s.sub + '</div>';
+        box.appendChild(d);
+      });
+    }
+
+    let geo = null; // 給hover用：x座標、兩張圖的y比例尺
+    function xLabels(svg, n, xAt, y, every) {
+      P.forEach((p, i) => {
+        if (i % every !== 0 && i !== n - 1) return;
+        if (i !== n - 1 && n - 1 - i < every * 0.6) return; // 太靠近最後一個標籤就略過，避免重疊
+        const t = el('text', { x: xAt(i), y: y, 'text-anchor': i === n - 1 ? 'end' : (i === 0 ? 'start' : 'middle'), 'font-size': 10.5, fill: tok('--text-muted') });
+        t.textContent = mdLabel(p.date); svg.appendChild(t);
+      });
+    }
+    function render(animate) {
+      const W = Math.max(260, mainBox.clientWidth);
+      const padL = 44, padR = 10;
+      const n = P.length;
+      const xAt = (i) => padL + (n === 1 ? 0 : i * (W - padL - padR) / (n - 1));
+      const every = Math.max(1, Math.ceil(n / (W < 520 ? 5 : 8)));
+      const uid = 'tr' + Math.random().toString(36).slice(2, 7);
+
+      // ---- 主圖：總市值 vs 總成本 ----
+      const H = W < 520 ? 210 : 250, top = 12, bot = 26;
+      let lo = Math.min(...P.map(p => Math.min(p.value, p.cost)));
+      let hi = Math.max(...P.map(p => Math.max(p.value, p.cost)));
+      const pad = (hi - lo) * 0.12 || hi * 0.02;
+      lo -= pad; hi += pad;
+      const { ticks, step } = niceTicks(lo, hi, 5);
+      const yM = (v) => top + (hi - v) / (hi - lo) * (H - top - bot);
+      const svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H });
+      const defs = el('defs', {});
+      svg.appendChild(defs);
+      ticks.forEach(v => {
+        svg.appendChild(el('line', { x1: padL, x2: W - padR, y1: yM(v), y2: yM(v), stroke: tok('--gridline'), 'stroke-width': 1 }));
+        const t = el('text', { x: padL - 7, y: yM(v) + 4, 'text-anchor': 'end', 'font-size': 10.5, fill: tok('--text-muted') });
+        t.textContent = wan(v, step); svg.appendChild(t);
+      });
+      xLabels(svg, n, xAt, H - 8, every);
+      const vPts = P.map((p, i) => [xAt(i), yM(p.value)].map(v => +v.toFixed(2)));
+      const cPts = P.map((p, i) => [xAt(i), yM(p.cost)].map(v => +v.toFixed(2)));
+      const vSegs = monoSegs(vPts), cSegs = monoSegs(cPts);
+      // 兩線之間的色帶：成本線以上的部分＝市值高於成本(紅)，以下＝低於成本(藍)
+      const band = 'M' + vPts[0] + fwd(vSegs) + 'L' + cPts[n - 1] + back(cSegs) + 'Z';
+      const costLine = 'M' + cPts[0] + fwd(cSegs);
+      const clipUp = el('clipPath', { id: uid + 'u' });
+      clipUp.appendChild(el('path', { d: costLine + 'L' + (W - padR) + ',0L' + padL + ',0Z' }));
+      const clipDn = el('clipPath', { id: uid + 'd' });
+      clipDn.appendChild(el('path', { d: costLine + 'L' + (W - padR) + ',' + H + 'L' + padL + ',' + H + 'Z' }));
+      defs.appendChild(clipUp); defs.appendChild(clipDn);
+      const grad = (id, color, a1, a2) => {
+        const g = el('linearGradient', { id: id, x1: 0, y1: 0, x2: 0, y2: 1 });
+        g.appendChild(el('stop', { offset: '0%', 'stop-color': color, 'stop-opacity': a1 }));
+        g.appendChild(el('stop', { offset: '100%', 'stop-color': color, 'stop-opacity': a2 }));
+        return g;
+      };
+      defs.appendChild(grad(uid + 'gu', tok('--gain'), 0.36, 0.10));
+      defs.appendChild(grad(uid + 'gd', tok('--loss'), 0.10, 0.36));
+      const glow = el('filter', { id: uid + 'glow', x: '-5%', y: '-30%', width: '110%', height: '160%' });
+      glow.appendChild(el('feDropShadow', { dx: 0, dy: 3, stdDeviation: 3, 'flood-color': tok('--trend-value'), 'flood-opacity': 0.35 }));
+      defs.appendChild(glow);
+      const bandG = el('g', {});
+      bandG.appendChild(el('path', { d: band, fill: 'url(#' + uid + 'gu)', 'clip-path': 'url(#' + uid + 'u)' }));
+      bandG.appendChild(el('path', { d: band, fill: 'url(#' + uid + 'gd)', 'clip-path': 'url(#' + uid + 'd)' }));
+      if (animate) bandG.classList.add('t-anim-fade');
+      svg.appendChild(bandG);
+      const cPath = el('path', { d: costLine, fill: 'none', stroke: tok('--text-muted'), 'stroke-width': 1.6, 'stroke-dasharray': '5 4', 'stroke-linecap': 'round' });
+      if (animate) cPath.classList.add('t-anim-fade');
+      svg.appendChild(cPath);
+      const vPath = el('path', { d: 'M' + vPts[0] + fwd(vSegs), fill: 'none', stroke: tok('--trend-value'), 'stroke-width': 2.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', filter: 'url(#' + uid + 'glow)' });
+      svg.appendChild(vPath);
+      // 最後一天的點加一圈光暈，強調「現在在這裡」
+      const lastV = vPts[n - 1];
+      const lastG = el('g', {});
+      lastG.appendChild(el('circle', { cx: lastV[0], cy: lastV[1], r: 7.5, fill: tok('--trend-value'), opacity: 0.18 }));
+      lastG.appendChild(el('circle', { cx: lastV[0], cy: lastV[1], r: 3.8, fill: tok('--trend-value'), stroke: tok('--surface-1'), 'stroke-width': 2 }));
+      if (animate) lastG.classList.add('t-anim-fade');
+      svg.appendChild(lastG);
+      // hover用的十字線跟點
+      const hov = el('g', { opacity: 0 });
+      const hLine = el('line', { y1: top, y2: H - bot, stroke: tok('--baseline'), 'stroke-width': 1 });
+      const hDotC = el('circle', { r: 3.8, fill: tok('--surface-1'), stroke: tok('--text-muted'), 'stroke-width': 2 });
+      const hDotV = el('circle', { r: 4.5, fill: tok('--trend-value'), stroke: tok('--surface-1'), 'stroke-width': 2 });
+      hov.appendChild(hLine); hov.appendChild(hDotC); hov.appendChild(hDotV);
+      svg.appendChild(hov);
+      mainBox.innerHTML = ''; mainBox.appendChild(svg);
+      if (animate) animateLine(vPath);
+
+      // ---- 下方小圖：已實現損益 ----
+      const H2 = 124, top2 = 10, bot2 = 22;
+      const vals = [0];
+      P.forEach(p => { if (hasRpVal(p)) vals.push(p.realized_day, p.realized_cum); });
+      let lo2 = Math.min(...vals), hi2 = Math.max(...vals);
+      if (lo2 === hi2) { lo2 -= 10000; hi2 += 10000; }
+      const pad2 = (hi2 - lo2) * 0.14;
+      lo2 = Math.min(0, lo2 - pad2); hi2 = Math.max(0, hi2 + pad2);
+      const t2 = niceTicks(lo2, hi2, 4);
+      const y2 = (v) => top2 + (hi2 - v) / (hi2 - lo2) * (H2 - top2 - bot2);
+      const svg2 = el('svg', { width: W, height: H2, viewBox: '0 0 ' + W + ' ' + H2 });
+      const defs2 = el('defs', {}); svg2.appendChild(defs2);
+      t2.ticks.forEach(v => {
+        svg2.appendChild(el('line', { x1: padL, x2: W - padR, y1: y2(v), y2: y2(v), stroke: Math.abs(v) < 1e-6 ? tok('--baseline') : tok('--gridline'), 'stroke-width': 1 }));
+        const t = el('text', { x: padL - 7, y: y2(v) + 4, 'text-anchor': 'end', 'font-size': 10.5, fill: tok('--text-muted') });
+        t.textContent = wan(v, t2.step); svg2.appendChild(t);
+      });
+      xLabels(svg2, n, xAt, H2 - 6, every);
+      if (!P.some(hasRpVal)) {
+        const t = el('text', { x: (padL + W - padR) / 2, y: (top2 + H2 - bot2) / 2 + 4, 'text-anchor': 'middle', 'font-size': 12, fill: tok('--text-muted') });
+        t.textContent = '這段期間還沒有已實現損益紀錄'; svg2.appendChild(t);
+      }
+      const bw = Math.max(4, Math.min(16, (W - padL - padR) / Math.max(1, n - 1) * 0.5));
+      let barNo = 0;
+      P.forEach((p, i) => {
+        if (!hasRpVal(p) || !p.realized_day) return;
+        const yv = y2(p.realized_day), y0 = y2(0);
+        const r = el('rect', { x: xAt(i) - bw / 2, y: Math.min(yv, y0), width: bw, height: Math.max(1.5, Math.abs(yv - y0)), rx: Math.min(3, bw / 3), fill: p.realized_day > 0 ? tok('--gain') : tok('--loss'), opacity: 0.85 });
+        if (animate) { r.classList.add('t-anim-bar'); r.style.transformOrigin = 'center ' + (p.realized_day > 0 ? 'bottom' : 'top'); r.style.animationDelay = (0.25 + barNo++ * 0.07) + 's'; }
+        svg2.appendChild(r);
+      });
+      const cumPts = [];
+      P.forEach((p, i) => { if (hasRpVal(p)) cumPts.push([xAt(i), y2(p.realized_cum)].map(v => +v.toFixed(2))); });
+      if (cumPts.length) {
+        const neg = P.filter(hasRpVal).every(p => p.realized_cum <= 0);
+        defs2.appendChild(grad(uid + 'gc', tok('--trend-cum'), neg ? 0.03 : 0.30, neg ? 0.30 : 0.03));
+        const cl = linePath(cumPts);
+        if (cumPts.length > 1) {
+          const area = el('path', { d: cl + 'L' + cumPts[cumPts.length - 1][0] + ',' + y2(0) + 'L' + cumPts[0][0] + ',' + y2(0) + 'Z', fill: 'url(#' + uid + 'gc)' });
+          if (animate) area.classList.add('t-anim-fade');
+          svg2.appendChild(area);
+        }
+        const cp = el('path', { d: cl, fill: 'none', stroke: tok('--trend-cum'), 'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
+        svg2.appendChild(cp);
+        if (animate && cumPts.length > 1) animateLine(cp);
+        const lc = cumPts[cumPts.length - 1];
+        svg2.appendChild(el('circle', { cx: lc[0], cy: lc[1], r: 3.2, fill: tok('--trend-cum'), stroke: tok('--surface-1'), 'stroke-width': 2 }));
+      }
+      const hov2 = el('g', { opacity: 0 });
+      const hLine2 = el('line', { y1: top2, y2: H2 - bot2, stroke: tok('--baseline'), 'stroke-width': 1 });
+      const hDot2 = el('circle', { r: 4, fill: tok('--trend-cum'), stroke: tok('--surface-1'), 'stroke-width': 2 });
+      hov2.appendChild(hLine2); hov2.appendChild(hDot2);
+      svg2.appendChild(hov2);
+      rpBox.innerHTML = ''; rpBox.appendChild(svg2);
+
+      geo = { xAt, n, padL, padR, W, yM, y2, hov, hLine, hDotV, hDotC, hov2, hLine2, hDot2 };
+    }
+
+    function showAt(clientX, box) {
+      if (!geo) return;
+      const rect = box.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const span = (geo.W - geo.padL - geo.padR) / Math.max(1, geo.n - 1);
+      const i = Math.max(0, Math.min(geo.n - 1, Math.round((x - geo.padL) / span)));
+      const p = P[i], xi = geo.xAt(i);
+      [geo.hLine, geo.hLine2].forEach(l => { l.setAttribute('x1', xi); l.setAttribute('x2', xi); });
+      geo.hDotV.setAttribute('cx', xi); geo.hDotV.setAttribute('cy', geo.yM(p.value));
+      geo.hDotC.setAttribute('cx', xi); geo.hDotC.setAttribute('cy', geo.yM(p.cost));
+      geo.hov.setAttribute('opacity', 1); geo.hov2.setAttribute('opacity', 1);
+      const hasRp = hasRpVal(p);
+      geo.hDot2.setAttribute('opacity', hasRp ? 1 : 0);
+      if (hasRp) { geo.hDot2.setAttribute('cx', xi); geo.hDot2.setAttribute('cy', geo.y2(p.realized_cum)); }
+      const unreal = p.value - p.cost;
+      const prev = P[i - 1];
+      const dv = prev ? p.value - prev.value : null;
+      tip.innerHTML =
+        '<div class="tt-date">' + p.date.replace(/-/g, '/') + '</div>' +
+        '<div class="tt-row"><span class="k"><i style="background:' + tok('--trend-value') + '"></i>總市值</span><b>' + fmtMoney(p.value) + '</b></div>' +
+        (dv !== null ? '<div class="tt-row"><span class="k">　較前一天</span><b class="' + dirCls(dv) + '">' + signMoney(dv) + '</b></div>' : '') +
+        '<div class="tt-row"><span class="k"><i style="background:' + tok('--text-muted') + '"></i>總成本</span><b>' + fmtMoney(p.cost) + '</b></div>' +
+        '<div class="tt-row"><span class="k">帳上未實現</span><b class="' + dirCls(unreal) + '">' + signMoney(unreal) + '</b></div>' +
+        '<hr>' +
+        (hasRp
+          ? '<div class="tt-row"><span class="k">當天已實現</span><b class="' + dirCls(p.realized_day) + '">' + (p.realized_day ? signMoney(p.realized_day) : '沒有賣出') + '</b></div>' +
+            '<div class="tt-row"><span class="k"><i style="background:' + tok('--trend-cum') + '"></i>累積已實現</span><b class="' + dirCls(p.realized_cum) + '">' + signMoney(p.realized_cum) + '</b></div>'
+          : '<div class="tt-row"><span class="k">已實現損益</span><b>還沒開始記錄</b></div>');
+      tip.classList.add('show');
+      const cardRect = card.getBoundingClientRect();
+      const tw = tip.offsetWidth, th = tip.offsetHeight;
+      const base = rect.left - cardRect.left + xi;
+      let left = base + 14;
+      if (left + tw > card.clientWidth - 8) left = base - tw - 14;
+      left = Math.max(8, left);
+      const topPos = mainBox.getBoundingClientRect().top - cardRect.top + 4;
+      tip.style.left = left + 'px';
+      tip.style.top = Math.max(4, Math.min(topPos, card.clientHeight - th - 8)) + 'px';
+    }
+    function hide() {
+      if (!geo) return;
+      geo.hov.setAttribute('opacity', 0); geo.hov2.setAttribute('opacity', 0);
+      tip.classList.remove('show');
+    }
+    [mainBox, rpBox].forEach(box => {
+      box.addEventListener('pointermove', e => showAt(e.clientX, box));
+      box.addEventListener('pointerdown', e => showAt(e.clientX, box));
+      box.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
+    });
+    // 手機上點圖以外的地方就收起提示框
+    document.addEventListener('pointerdown', e => { if (!mainBox.contains(e.target) && !rpBox.contains(e.target)) hide(); });
+
+    function applyRange(animate) {
+      if (range === 'all') P = ALL;
+      else {
+        const last = new Date(ALL[ALL.length - 1].date + 'T00:00:00');
+        const cut = new Date(last.getTime() - (+range) * 86400000);
+        P = ALL.filter(p => new Date(p.date + 'T00:00:00') >= cut);
+        if (P.length < 2) P = ALL.slice(-2);
+      }
+      hide();
+      renderStats();
+      render(animate);
+    }
+    document.querySelectorAll('#trend-range .basis-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        range = btn.dataset.range;
+        document.querySelectorAll('#trend-range .basis-btn').forEach(b => b.classList.toggle('is-active', b === btn));
+        applyRange(true);
+      });
+    });
+    applyRange(true);
+    let lastW = mainBox.clientWidth, rT = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(rT);
+      rT = setTimeout(() => { if (mainBox.clientWidth !== lastW) { lastW = mainBox.clientWidth; hide(); render(false); } }, 150);
+    });
+  })();
 
   // ---------- footnote ----------
   const ex = DATA.excluded || [];
