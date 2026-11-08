@@ -94,6 +94,18 @@
   .basis-btn.is-active { background: var(--surface-1); color: var(--text-primary); font-weight: 700; box-shadow: 0 1px 3px rgba(0,0,0,.12); }
   .basis-btn:hover:not(.is-active) { color: var(--text-primary); }
   .basis-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* 區間按鈕：五格等寬排一行(手機寬度也不換行) */
+  #trend-range { display: grid; grid-template-columns: repeat(5, 1fr); width: 100%; max-width: 420px; }
+  #trend-range .basis-btn { padding: 6px 2px; white-space: nowrap; }
+  /* 月份：看起來是按鈕，上面疊一個透明的原生下拉選單(手機點了會跳出系統的選擇清單) */
+  .month-pick { position: relative; }
+  .month-pick select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+  .month-pick select option { color: #111; }
+  .custom-range { display: none; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 12.5px; color: var(--text-secondary); }
+  .custom-range.show { display: flex; }
+  .custom-range input[type=date] { font-family: inherit; font-size: 13px; padding: 5px 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary); color-scheme: light dark; }
+  .custom-range button { font-family: inherit; font-size: 12.5px; padding: 6px 14px; border-radius: 6px; border: none; background: var(--trend-value); color: #fff; font-weight: 700; cursor: pointer; }
+  .custom-range .cr-msg { flex-basis: 100%; font-size: 11.5px; color: var(--text-muted); }
   /* 券商切換(2026/11/04新增)：頁面最上方，永豐／元大／合併 */
   .acct-bar { display: flex; gap: 6px; flex-wrap: wrap; margin: -8px 0 10px; }
   .acct-btn { font-family: inherit; font-size: 14px; font-weight: 600; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); padding: 8px 16px; border-radius: 999px; cursor: pointer; }
@@ -251,10 +263,16 @@
         </div>
         <div class="basis-toggle" id="trend-range">
           <button class="basis-btn is-active" data-range="all">全部</button>
-          <button class="basis-btn" data-range="90">近3月</button>
           <button class="basis-btn" data-range="30">近1月</button>
           <button class="basis-btn" data-range="14">近2週</button>
+          <span class="month-pick basis-btn" id="month-pick"><span id="month-label">月份 ▾</span><select id="month-select" aria-label="選擇月份"></select></span>
+          <button class="basis-btn" data-range="custom">區間</button>
         </div>
+      </div>
+      <div class="custom-range" id="custom-range">
+        <input type="date" id="cr-from" aria-label="起日"> 到 <input type="date" id="cr-to" aria-label="迄日">
+        <button id="cr-go">查詢</button>
+        <span class="cr-msg" id="cr-msg"></span>
       </div>
       <div class="trend-since" id="trend-since"></div>
       <div class="trend-stats" id="trend-stats"></div>
@@ -346,13 +364,24 @@
     return g;
   };
 
-  let acc = null, range = 'all', V = null, geo = null;
+  let acc = null, range = 'all', V = null, geo = null, monthSel = null, customRange = null;
 
   // 依目前選的券商＋區間，整理出要畫的資料
   function prepare() {
-    const end = DATA.date;
+    let end = DATA.date;
     const allStarts = [acc.snaps[0] && acc.snaps[0].date, acc.realized_from].filter(Boolean).sort();
-    const start = range === 'all' ? (allStarts[0] || end) : iso(T(end) - (+range) * DAY);
+    let start;
+    if (range === 'all') start = allStarts[0] || end;
+    else if (range === 'month') {
+      // 該月第一天～最後一天；new Date(年, 月, 0) 會得到當月最後一天，大小月、2月閏年都自動算對
+      const [y, m] = monthSel.split('-').map(Number);
+      start = monthSel + '-01';
+      const last = monthSel + '-' + String(new Date(y, m, 0).getDate()).padStart(2, '0');
+      if (last < end) end = last;  // 還沒過完的月份只到資料最新那天
+    } else if (range === 'custom') {
+      start = customRange[0];
+      if (customRange[1] < end) end = customRange[1];
+    } else start = iso(T(end) - (+range) * DAY);
     const S = acc.snaps.filter(s => s.date >= start && s.date <= end);
     // 累積已實現：從有紀錄那天一路累加(不是從區間開頭歸零)
     let cum = 0;
@@ -397,7 +426,7 @@
     // 兩張圖各用自己的時間軸，最左邊＝那張圖的資料起始日(上圖市值比已實現晚很多才開始記，
     // 共用時間軸會讓上圖擠在右邊一小段)
     const from = acc.realized_from;
-    const t0a = S.length ? T(S[0].date) : V.t0, t0b = from && from > V.start ? T(from) : V.t0;
+    const t0a = S.length ? T(S[0].date) : V.t0, t0b = from && from > V.start && from <= V.end ? T(from) : V.t0;
     const t1 = V.t1;
     const mkX = (t0) => (t) => t1 === t0 ? (padL + W - padR) / 2 : padL + (t - t0) / (t1 - t0) * (W - padL - padR);
     const xTa = mkX(t0a), xTb = mkX(t0b);
@@ -503,7 +532,7 @@
     const y2 = (v) => top2 + (hi2 - v) / (hi2 - lo2) * (H2 - top2 - bot2);
     // 還沒有紀錄的期間塗灰，跟「0元」區分開
     if (!from || from > V.start) {
-      const xe = from ? xD2(from) : W - padR;
+      const xe = from ? Math.min(W - padR, xD2(from)) : W - padR;
       svg2.appendChild(el('rect', { x: padL, y: top2, width: Math.max(0, xe - padL), height: H2 - top2 - bot2, fill: tok('--gridline'), opacity: 0.55 }));
       if (xe - padL > 90) {
         const t = el('text', { x: (padL + xe) / 2, y: (top2 + H2 - bot2) / 2 + 4, 'text-anchor': 'middle', 'font-size': 11.5, fill: tok('--text-muted') });
@@ -681,10 +710,58 @@
     b.addEventListener('click', () => selectAccount(a.key));
     bar.appendChild(b);
   });
-  document.querySelectorAll('#trend-range .basis-btn').forEach(btn => {
+  // ---- 區間選擇：全部／近1月／近2週／月份下拉／自訂區間 ----
+  const monthPick = document.getElementById('month-pick'), monthSelect = document.getElementById('month-select');
+  const crBox = document.getElementById('custom-range'), crFrom = document.getElementById('cr-from'), crTo = document.getElementById('cr-to'), crMsg = document.getElementById('cr-msg');
+  const firstDate = ACCS.flatMap(a => [a.snaps[0] && a.snaps[0].date, a.realized_from]).filter(Boolean).sort()[0] || DATA.date;
+  function markActive(key) {
+    document.querySelectorAll('#trend-range button.basis-btn').forEach(b => b.classList.toggle('is-active', b.dataset.range === key));
+    monthPick.classList.toggle('is-active', key === 'month');
+    if (key !== 'month') document.getElementById('month-label').textContent = '月份 ▾';
+    crBox.classList.toggle('show', key === 'custom');
+  }
+  // 月份清單：資料最早那個月～最新那個月，新的在上面
+  (function buildMonths() {
+    let html = '<option value="" disabled selected>月份</option>';
+    let y = +DATA.date.slice(0, 4), m = +DATA.date.slice(5, 7);
+    const y0 = +firstDate.slice(0, 4), m0 = +firstDate.slice(5, 7);
+    while (y > y0 || (y === y0 && m >= m0)) {
+      html += '<option value="' + y + '-' + String(m).padStart(2, '0') + '">' + y + '年' + m + '月</option>';
+      if (--m === 0) { m = 12; y--; }
+    }
+    monthSelect.innerHTML = html;
+  })();
+  monthSelect.addEventListener('change', () => {
+    monthSel = monthSelect.value; range = 'month';
+    markActive('month');
+    // 按鈕上只寫「5月」，跟最新資料不同年才加年份(例如「25/12月」)
+    const [yy, mm] = monthSel.split('-');
+    document.getElementById('month-label').textContent = (yy === DATA.date.slice(0, 4) ? '' : yy.slice(2) + '/') + (+mm) + '月 ▾';
+    apply(true);
+  });
+  crFrom.min = crTo.min = firstDate; crFrom.max = crTo.max = DATA.date;
+  crFrom.value = iso(T(DATA.date) - 30 * DAY) < firstDate ? firstDate : iso(T(DATA.date) - 30 * DAY);
+  crTo.value = DATA.date;
+  document.getElementById('cr-go').addEventListener('click', () => {
+    let a = crFrom.value, b = crTo.value;
+    if (!a || !b) { crMsg.textContent = '請選起日和迄日'; return; }
+    if (a > b) [a, b] = [b, a];  // 選反了就自動對調
+    customRange = [a, b]; range = 'custom';
+    crMsg.textContent = ymd(a) + ' ～ ' + ymd(b);
+    apply(true);
+  });
+  document.querySelectorAll('#trend-range button.basis-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      if (btn.dataset.range === 'custom') {
+        // 「區間」先打開日期欄位，按「查詢」才套用
+        markActive('custom');
+        monthSelect.value = '';
+        if (range !== 'custom') crMsg.textContent = '選好起日、迄日後按「查詢」';
+        return;
+      }
       range = btn.dataset.range;
-      document.querySelectorAll('#trend-range .basis-btn').forEach(b => b.classList.toggle('is-active', b === btn));
+      monthSelect.value = '';
+      markActive(range);
       apply(true);
     });
   });
