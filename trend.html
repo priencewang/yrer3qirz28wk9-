@@ -203,6 +203,9 @@
     box-shadow: 0 6px 22px rgba(0,0,0,.16); padding: 9px 11px; font-size: 12px; min-width: 172px;
   }
   .trend-tip.show { opacity: 1; }
+  .trend-tip.show.tappable { pointer-events: auto; }
+  .trend-tip { max-height: 72vh; overflow-y: auto; }
+  .trend-tip .tt-more { color: var(--trend-cum); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
   .trend-tip .tt-date { font-weight: 700; margin-bottom: 5px; }
   .trend-tip .tt-row { display: flex; justify-content: space-between; gap: 14px; line-height: 1.65; }
   .trend-tip .tt-row b { font-variant-numeric: tabular-nums; }
@@ -550,8 +553,10 @@
     acc.realized.forEach(r => { if (r.date <= date) c += r.pnl; });
     return c;
   }
+  let lastPtr = 'touch', expandedDate = null, lastShow = null;
   function showAt(clientX, box) {
     if (!geo || !geo.stops.length) return;
+    lastShow = [clientX, box];
     const rect = box.getBoundingClientRect();
     const x = clientX - rect.left;
     const onTop = box === mainBox;
@@ -593,13 +598,16 @@
       const day = r ? r.pnl : 0;
       html += '<div class="tt-row"><span class="k">當天已實現</span><b class="' + dirCls(day) + '">' + (r && (r.pnl || (r.items && r.items.length)) ? signMoney(day) : '沒有賣出') + '</b></div>';
       if (r && r.items && r.items.length) {
-        r.items.slice(0, 6).forEach(it => { html += '<div class="tt-row"><span class="k">　' + esc(it.name) + '</span><b class="' + dirCls(it.pnl) + '">' + signMoney(it.pnl) + '</b></div>'; });
-        if (r.items.length > 6) html += '<div class="tt-row"><span class="k">　…還有 ' + (r.items.length - 6) + ' 筆</span><b></b></div>';
+        // 手機點「還有N筆」展開全部；滑鼠移過去直接顯示全部(滑鼠離開圖提示框就消失，來不及點)
+        const showAll = lastPtr === 'mouse' || expandedDate === best;
+        (showAll ? r.items : r.items.slice(0, 6)).forEach(it => { html += '<div class="tt-row"><span class="k">　' + esc(it.name) + '</span><b class="' + dirCls(it.pnl) + '">' + signMoney(it.pnl) + '</b></div>'; });
+        if (!showAll && r.items.length > 6) html += '<div class="tt-row"><span class="k tt-more" data-date="' + best + '">　…還有 ' + (r.items.length - 6) + ' 筆，點我展開</span><b></b></div>';
       }
       html += '<div class="tt-row"><span class="k"><i style="background:' + tok('--trend-cum') + '"></i>累積已實現</span><b class="' + dirCls(c) + '">' + signMoney(c) + '</b></div>';
     }
     tip.innerHTML = html;
     tip.classList.add('show');
+    tip.classList.toggle('tappable', lastPtr !== 'mouse');  // 滑鼠時不擋游標，免得游標滑進提示框就閃掉
     const cardRect = card.getBoundingClientRect();
     const tw = tip.offsetWidth, th = tip.offsetHeight;
     const base = rect.left - cardRect.left + xi;
@@ -616,11 +624,18 @@
     tip.classList.remove('show');
   }
   [mainBox, rpBox].forEach(box => {
-    box.addEventListener('pointermove', e => showAt(e.clientX, box));
-    box.addEventListener('pointerdown', e => showAt(e.clientX, box));
+    box.addEventListener('pointermove', e => { lastPtr = e.pointerType; showAt(e.clientX, box); });
+    box.addEventListener('pointerdown', e => { lastPtr = e.pointerType; expandedDate = null; showAt(e.clientX, box); });
     box.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') hide(); });
   });
-  document.addEventListener('pointerdown', e => { if (!mainBox.contains(e.target) && !rpBox.contains(e.target)) hide(); });
+  document.addEventListener('pointerdown', e => { if (!mainBox.contains(e.target) && !rpBox.contains(e.target) && !tip.contains(e.target)) hide(); });
+  // 點「還有N筆，點我展開」：同一天重畫一次、列出全部
+  tip.addEventListener('click', e => {
+    const more = e.target.closest('.tt-more');
+    if (!more || !lastShow) return;
+    expandedDate = more.dataset.date;
+    showAt(lastShow[0], lastShow[1]);
+  });
 
   // 每家的「看圖前先知道」
   function notes() {
