@@ -385,18 +385,26 @@
     });
   }
 
+  // 每張圖的高度：接近手機一整個畫面(扣掉標題、圖例)，看下一張要往下滑(2026/11/08 RAY要求)
+  const VIEW_H = window.innerHeight || 700;
   function render(animate) {
-    const { S, R, t0, t1 } = V;
+    const { S, R } = V;
     const W = Math.max(260, mainBox.clientWidth);
     const padL = 44, padR = 12;
-    const xT = (t) => t1 === t0 ? (padL + W - padR) / 2 : padL + (t - t0) / (t1 - t0) * (W - padL - padR);
-    const xD = (d) => xT(T(d));
+    // 兩張圖各用自己的時間軸，最左邊＝那張圖的資料起始日(上圖市值比已實現晚很多才開始記，
+    // 共用時間軸會讓上圖擠在右邊一小段)
+    const from = acc.realized_from;
+    const t0a = S.length ? T(S[0].date) : V.t0, t0b = from && from > V.start ? T(from) : V.t0;
+    const t1 = V.t1;
+    const mkX = (t0) => (t) => t1 === t0 ? (padL + W - padR) / 2 : padL + (t - t0) / (t1 - t0) * (W - padL - padR);
+    const xTa = mkX(t0a), xTb = mkX(t0b);
+    const xD = (d) => xTa(T(d)), xD2 = (d) => xTb(T(d));
     const uid = 'tr' + Math.random().toString(36).slice(2, 7);
-    const spanDays = (t1 - t0) / DAY;
+    const spanDays2 = (t1 - t0b) / DAY;
     // 時間軸刻度：依寬度平均放5~7個日期，跨年時標年份
-    function xAxis(svg, y) {
+    function xAxis(svg, y, t0, xT) {
       const k = W < 520 ? 4 : 6;
-      const multiYear = V.start.slice(0, 4) !== V.end.slice(0, 4);
+      const multiYear = iso(t0).slice(0, 4) !== V.end.slice(0, 4);
       for (let i = 0; i <= k; i++) {
         if (t1 === t0 && i > 0) break;
         const t = t0 + (t1 - t0) * i / k;
@@ -408,7 +416,7 @@
     }
 
     // ---- 主圖：總市值 vs 總成本 ----
-    const H = W < 520 ? 210 : 250, top = 12, bot = 26;
+    const H = Math.max(300, Math.min(760, VIEW_H - 190)), top = 12, bot = 26;
     const svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H });
     const defs = el('defs', {}); svg.appendChild(defs);
     let yM = () => 0;
@@ -428,7 +436,7 @@
         t.textContent = wan(v); svg.appendChild(t);
       });
     }
-    xAxis(svg, H - 8);
+    xAxis(svg, H - 8, t0a, xTa);
     if (S.length >= 2) {
       const n = S.length;
       const vPts = S.map(p => [xD(p.date), yM(p.value)].map(v => +v.toFixed(2)));
@@ -480,10 +488,9 @@
     mainBox.innerHTML = ''; mainBox.appendChild(svg);
 
     // ---- 下方小圖：已實現損益(長條＝當天、橘線＝累積，累積是階梯線：沒賣出的日子維持不變) ----
-    const H2 = 132, top2 = 10, bot2 = 22;
+    const H2 = Math.max(260, Math.min(700, VIEW_H - 210)), top2 = 10, bot2 = 22;
     const svg2 = el('svg', { width: W, height: H2, viewBox: '0 0 ' + W + ' ' + H2 });
     const defs2 = el('defs', {}); svg2.appendChild(defs2);
-    const from = acc.realized_from;
     const vals = [0, V.cumBefore];
     R.forEach(r => vals.push(r.pnl, r.cum));
     let lo2 = Math.min(...vals), hi2 = Math.max(...vals);
@@ -493,7 +500,7 @@
     const y2 = (v) => top2 + (hi2 - v) / (hi2 - lo2) * (H2 - top2 - bot2);
     // 還沒有紀錄的期間塗灰，跟「0元」區分開
     if (!from || from > V.start) {
-      const xe = from ? xD(from) : W - padR;
+      const xe = from ? xD2(from) : W - padR;
       svg2.appendChild(el('rect', { x: padL, y: top2, width: Math.max(0, xe - padL), height: H2 - top2 - bot2, fill: tok('--gridline'), opacity: 0.55 }));
       if (xe - padL > 90) {
         const t = el('text', { x: (padL + xe) / 2, y: (top2 + H2 - bot2) / 2 + 4, 'text-anchor': 'middle', 'font-size': 11.5, fill: tok('--text-muted') });
@@ -505,20 +512,20 @@
       const t = el('text', { x: padL - 7, y: y2(v) + 4, 'text-anchor': 'end', 'font-size': 10.5, fill: tok('--text-muted') });
       t.textContent = wan(v); svg2.appendChild(t);
     });
-    xAxis(svg2, H2 - 6);
-    const bw = Math.max(3, Math.min(14, (W - padL - padR) / Math.max(1, spanDays) * 0.7));
+    xAxis(svg2, H2 - 6, t0b, xTb);
+    const bw = Math.max(3, Math.min(14, (W - padL - padR) / Math.max(1, spanDays2) * 0.7));
     let barNo = 0;
     R.forEach(r => {
       if (!r.pnl) return;
       const yv = y2(r.pnl), y0 = y2(0);
-      const rc = el('rect', { x: xD(r.date) - bw / 2, y: Math.min(yv, y0), width: bw, height: Math.max(1.5, Math.abs(yv - y0)), rx: Math.min(3, bw / 3), fill: r.pnl > 0 ? tok('--gain') : tok('--loss'), opacity: 0.85 });
+      const rc = el('rect', { x: xD2(r.date) - bw / 2, y: Math.min(yv, y0), width: bw, height: Math.max(1.5, Math.abs(yv - y0)), rx: Math.min(3, bw / 3), fill: r.pnl > 0 ? tok('--gain') : tok('--loss'), opacity: 0.85 });
       if (animate) { rc.classList.add('t-anim-bar'); rc.style.transformOrigin = 'center ' + (r.pnl > 0 ? 'bottom' : 'top'); rc.style.animationDelay = (0.25 + Math.min(barNo++, 20) * 0.05) + 's'; }
       svg2.appendChild(rc);
     });
     if (from && from <= V.end) {
-      const sx = xD(from > V.start ? from : V.start);
+      const sx = xD2(from > V.start ? from : V.start);
       let d = 'M' + sx.toFixed(2) + ',' + y2(from > V.start ? 0 : V.cumBefore).toFixed(2);
-      R.forEach(r => { const x = xD(r.date).toFixed(2); d += 'H' + x + 'V' + y2(r.cum).toFixed(2); });
+      R.forEach(r => { const x = xD2(r.date).toFixed(2); d += 'H' + x + 'V' + y2(r.cum).toFixed(2); });
       d += 'H' + (W - padR);
       const lastCum = R.length ? R[R.length - 1].cum : V.cumBefore;
       const cp = el('path', { d, fill: 'none', stroke: tok('--trend-cum'), 'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
@@ -534,7 +541,7 @@
 
     // hover可以停的日子：有市值點的日子＋有賣出的日子
     const stops = Array.from(new Set(S.map(s => s.date).concat(R.filter(r => r.pnl || (r.items && r.items.length)).map(r => r.date)))).sort();
-    geo = { xD, yM, stops, hov, hLine, hDotV, hDotC, hov2, hLine2 };
+    geo = { xD, xD2, t0a, t0b, yM, stops, hov, hLine, hDotV, hDotC, hov2, hLine2 };
   }
 
   function cumAt(date) {
@@ -547,12 +554,21 @@
     if (!geo || !geo.stops.length) return;
     const rect = box.getBoundingClientRect();
     const x = clientX - rect.left;
-    let best = geo.stops[0];
-    geo.stops.forEach(d => { if (Math.abs(geo.xD(d) - x) < Math.abs(geo.xD(best) - x)) best = d; });
-    const xi = geo.xD(best);
+    const onTop = box === mainBox;
+    const fx = onTop ? geo.xD : geo.xD2, tmin = onTop ? geo.t0a : geo.t0b;
+    const cand = geo.stops.filter(d => T(d) >= tmin);
+    if (!cand.length) return;
+    let best = cand[0];
+    cand.forEach(d => { if (Math.abs(fx(d) - x) < Math.abs(fx(best) - x)) best = d; });
+    const xi = fx(best);
     const s = V.S.find(p => p.date === best);
     const r = V.R.find(p => p.date === best);
-    [geo.hLine, geo.hLine2].forEach(l => { l.setAttribute('x1', xi); l.setAttribute('x2', xi); });
+    // 兩張圖時間軸不同，各自換算位置；那天不在某張圖的範圍內就不畫那張的直線
+    [[geo.hLine, geo.xD, geo.t0a], [geo.hLine2, geo.xD2, geo.t0b]].forEach(([l, f, t0]) => {
+      const inR = T(best) >= t0;
+      l.setAttribute('opacity', inR ? 1 : 0);
+      l.setAttribute('x1', f(best)); l.setAttribute('x2', f(best));
+    });
     geo.hDotV.setAttribute('opacity', s ? 1 : 0); geo.hDotC.setAttribute('opacity', s ? 1 : 0);
     if (s) {
       geo.hDotV.setAttribute('cx', xi); geo.hDotV.setAttribute('cy', geo.yM(s.value));
@@ -590,7 +606,7 @@
     let left = base + 14;
     if (left + tw > card.clientWidth - 8) left = base - tw - 14;
     left = Math.max(8, left);
-    const topPos = mainBox.getBoundingClientRect().top - cardRect.top + 4;
+    const topPos = box.getBoundingClientRect().top - cardRect.top + 4;
     tip.style.left = left + 'px';
     tip.style.top = Math.max(4, Math.min(topPos, card.clientHeight - th - 8)) + 'px';
   }
