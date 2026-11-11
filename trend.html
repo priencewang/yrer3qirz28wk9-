@@ -189,6 +189,14 @@
   .trend-head { position: relative; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
   .trend-head .basis-toggle { margin-bottom: 0; }
   .trend-since { position: relative; font-size: 11px; color: var(--text-muted); margin: 10px 0 6px; }
+  .since-row { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 10px 0 6px; }
+  .since-row .trend-since { margin: 0; }
+  .why-btn { font: inherit; font-size: 11px; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; cursor: pointer; }
+  .why-btn[aria-expanded="true"] { color: var(--text-primary, inherit); border-color: var(--text-muted); }
+  .why-note { position: relative; display: none; font-size: 12px; line-height: 1.7; color: var(--text-secondary); background: var(--page-plane); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin: 0 0 12px; }
+  .why-note.show { display: block; }
+  .why-note b { color: var(--text-primary, inherit); }
+  .why-note .eq { font-variant-numeric: tabular-nums; margin-top: 4px; }
   .trend-stats { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0 0 14px; }
   @media (max-width: 720px) { .trend-stats { grid-template-columns: repeat(2, 1fr); } }
   .tstat { border-radius: 10px; padding: 10px 12px; background: var(--page-plane); border: 1px solid var(--border); min-width: 0; }
@@ -274,7 +282,12 @@
         <button id="cr-go">查詢</button>
         <span class="cr-msg" id="cr-msg"></span>
       </div>
-      <div class="trend-since" id="trend-since"></div>
+      <div class="since-row"><div class="trend-since" id="trend-since"></div><button class="why-btn" id="why-btn" type="button" aria-expanded="false" aria-controls="why-note">？市值變化怎麼看</button></div>
+      <div class="why-note" id="why-note">
+        <b>總市值 ＝ 總成本 ＋ 帳上未實現</b><br>
+        總市值的增減，會把你<b>加碼投入的新本金</b>（總成本增加）一起算進去；真正因為股價漲跌賺賠的，要看<b>「帳上未實現」的變化</b>。
+        <div class="eq" id="why-eq"></div>
+      </div>
       <div class="trend-stats" id="trend-stats"></div>
       <div class="trend-chart" id="trend-main"></div>
       <div class="trend-legend">
@@ -321,6 +334,10 @@
   const mainBox = document.getElementById('trend-main');
   const rpBox = document.getElementById('trend-rp');
   const tip = document.getElementById('trend-tip');
+  document.getElementById('why-btn').addEventListener('click', e => {
+    const n = document.getElementById('why-note'), open = !n.classList.contains('show');
+    n.classList.toggle('show', open); e.currentTarget.setAttribute('aria-expanded', open);
+  });
   const bar = document.getElementById('acct-bar');
   document.getElementById('hdr-sub').textContent = '資料到 ' + (DATA.date || '').replace(/-/g, '/') + '・每天 15:30 排程自動更新';
 
@@ -397,6 +414,14 @@
     const box = document.getElementById('trend-stats');
     const since = document.getElementById('trend-since');
     since.textContent = first && S.length > 1 ? '▲▼ 是跟 ' + md(first.date) + ' 比的變化' : '';
+    // 「？」說明：用這段區間的真實數字示範 市值變化 = 成本變化 + 未實現變化
+    const whyBtn = document.getElementById('why-btn'), whyEq = document.getElementById('why-eq');
+    whyBtn.style.display = first && S.length > 1 ? '' : 'none';
+    if (first && S.length > 1) {
+      const sg = (d) => (d >= 0 ? '+' : '−') + '$' + Math.abs(Math.round(d)).toLocaleString('en-US');
+      const dv = last.value - first.value, dc = last.cost - first.cost, du = dv - dc;
+      whyEq.textContent = '這段期間：成本 ' + sg(dc) + '（本金）＋ 未實現 ' + sg(du) + '（漲跌）＝ 市值 ' + sg(dv);
+    }
     const deltaTxt = (d) => (d > 0 ? '▲' : d < 0 ? '▼' : '') + '$' + Math.abs(Math.round(d)).toLocaleString('en-US');
     const one = S.length > 1;
     const unreal = last ? last.value - last.cost : null;
