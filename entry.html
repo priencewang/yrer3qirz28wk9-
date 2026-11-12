@@ -67,6 +67,20 @@
   }
   .ma-tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex-shrink: 0;
     box-shadow: 0 0 0 1.5px rgba(128,128,128,0.35); }
+  /* 入場區篩選：型態膠囊開關(右上角懸浮按鈕，跟著畫面走) */
+  .ma-toggle-input { display: none; }
+  #panel-filters .ma-line { display: none; }
+  #ma-toggle:checked ~ .filters-body .ma-line { display: flex; }
+  .ma-fab {
+    position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 12px; z-index: 50;
+    padding: 9px 14px; border-radius: 999px; font-size: 13px; font-weight: bold; cursor: pointer;
+    background: #2f5288; color: #fff; box-shadow: 0 3px 12px rgba(0,0,0,0.35);
+    border: 1.5px solid rgba(255,255,255,0.25); user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  .ma-fab .on { display: none; }
+  #ma-toggle:checked + .ma-fab { background: #f2f2f2; color: #1a1a1a; border-color: #2f5288; }
+  #ma-toggle:checked + .ma-fab .on { display: inline; }
+  #ma-toggle:checked + .ma-fab .off { display: none; }
   /* 重點卡片：型態速查表 */
   .ref-box { background: var(--card-bg); border-radius: 10px; margin: 18px 0 12px; border: 1px solid rgba(128,128,128,0.35); }
   .ref-box > summary { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; font-weight: bold; font-size: 14px; }
@@ -173,7 +187,7 @@
 </head>
 <body>
 <h1>入場出場速覽</h1>
-<div class="subtitle">資料來源: 進場訊號快篩_20261112_1315.xlsx　產出時間: 2026-11-13 00:11</div>
+<div class="subtitle">資料來源: 進場訊號快篩_20261112_1315.xlsx　產出時間: 2026-11-13 00:22</div>
 
 <input type="radio" name="tabs" id="tab-cards" class="tab-input" checked>
 <input type="radio" name="tabs" id="tab-table" class="tab-input">
@@ -197,7 +211,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#A32020"></div>
-      <div class="name-block"><div class="name-row"><span>禾伸堂</span> <span class="code">3026</span></div><div class="badge-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)，跌破爆量日低點</span></div></div>
+      <div class="name-block"><div class="name-row"><span>禾伸堂</span> <span class="code">3026</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)，跌破爆量日低點</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-39.6%</div>
@@ -211,7 +225,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#A32020"></div>
-      <div class="name-block"><div class="name-row"><span>華邦電</span> <span class="code">2344</span></div><div class="badge-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)，跌破爆量日低點</span></div></div>
+      <div class="name-block"><div class="name-row"><span>華邦電</span> <span class="code">2344</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)，跌破爆量日低點</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-41.1%</div>
@@ -225,7 +239,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#A32020"></div>
-      <div class="name-block"><div class="name-row"><span>萬潤</span> <span class="code">6187</span></div><div class="badge-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)，跌破爆量日低點</span></div></div>
+      <div class="name-block"><div class="name-row"><span>萬潤</span> <span class="code">6187</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)，跌破爆量日低點</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-26.1%</div>
@@ -239,7 +253,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#A32020"></div>
-      <div class="name-block"><div class="name-row"><span>景碩</span> <span class="disposition-tag">[處置中‧剩餘4天]</span> <span class="code">3189</span></div><div class="badge-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)</span></div></div>
+      <div class="name-block"><div class="name-row"><span>景碩</span> <span class="disposition-tag">[處置中‧剩餘4天]</span> <span class="code">3189</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-31.0%</div>
@@ -253,7 +267,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#A32020"></div>
-      <div class="name-block"><div class="name-row"><span>力積電</span> <span class="code">6770</span></div><div class="badge-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)</span></div></div>
+      <div class="name-block"><div class="name-row"><span>力積電</span> <span class="code">6770</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-26.8%</div>
@@ -267,7 +281,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#A32020"></div>
-      <div class="name-block"><div class="name-row"><span>旺宏</span> <span class="code">2337</span></div><div class="badge-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)</span></div></div>
+      <div class="name-block"><div class="name-row"><span>旺宏</span> <span class="code">2337</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-51.5%</div>
@@ -281,7 +295,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#A32020"></div>
-      <div class="name-block"><div class="name-row"><span>華新科</span> <span class="code">2492</span></div><div class="badge-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)</span></div></div>
+      <div class="name-block"><div class="name-row"><span>華新科</span> <span class="code">2492</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#A32020;color:#ffffff">四面楚歌(首日)</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-35.0%</div>
@@ -295,7 +309,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#F8CBCB"></div>
-      <div class="name-block"><div class="name-row"><span>力致</span> <span class="code">3483</span></div><div class="badge-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">四面楚歌</span></div></div>
+      <div class="name-block"><div class="name-row"><span>力致</span> <span class="code">3483</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">四面楚歌</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-45.6%</div>
@@ -309,7 +323,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#F8CBCB"></div>
-      <div class="name-block"><div class="name-row"><span>國統</span> <span class="code">8936</span></div><div class="badge-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">四面楚歌</span></div></div>
+      <div class="name-block"><div class="name-row"><span>國統</span> <span class="code">8936</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">四面楚歌</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-20.1%</div>
@@ -330,7 +344,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#F8CBCB"></div>
-      <div class="name-block"><div class="name-row"><span>南電</span> <span class="code">8046</span></div><div class="badge-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">後繼無力（貼近5日線0.10%，僅供參考），跌破爆量日低點</span></div></div>
+      <div class="name-block"><div class="name-row"><span>南電</span> <span class="code">8046</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">後繼無力（貼近5日線0.10%，僅供參考），跌破爆量日低點</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-21.3%</div>
@@ -344,7 +358,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#F8CBCB"></div>
-      <div class="name-block"><div class="name-row"><span>日月光投控</span> <span class="code">3711</span></div><div class="badge-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">後繼無力</span></div></div>
+      <div class="name-block"><div class="name-row"><span>日月光投控</span> <span class="code">3711</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">後繼無力</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-2.5%</div>
@@ -359,7 +373,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#F8CBCB"></div>
-      <div class="name-block"><div class="name-row"><span>眾達-KY</span> <span class="code">4977</span></div><div class="badge-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">高檔暴跌(5日10日月線全破)（貼近10日線0.28%，僅供參考），跌破月線警訊</span></div></div>
+      <div class="name-block"><div class="name-row"><span>眾達-KY</span> <span class="code">4977</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#F8CBCB;color:#1a1a1a">高檔暴跌(5日10日月線全破)（貼近10日線0.28%，僅供參考），跌破月線警訊</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-12.5%</div>
@@ -379,7 +393,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>光環</span> <span class="code">3234</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日，跌破半年線警訊</span></div></div>
+      <div class="name-block"><div class="name-row"><span>光環</span> <span class="code">3234</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日，跌破半年線警訊</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-26.7%</div>
@@ -393,7 +407,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>前鼎</span> <span class="code">4908</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>前鼎</span> <span class="code">4908</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-32.4%</div>
@@ -407,7 +421,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>亞翔</span> <span class="code">6139</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>亞翔</span> <span class="code">6139</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-28.9%</div>
@@ -421,7 +435,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>尖點</span> <span class="code">8021</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>尖點</span> <span class="code">8021</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-20.1%</div>
@@ -435,7 +449,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>力成</span> <span class="code">6239</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>力成</span> <span class="code">6239</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-29.8%</div>
@@ -449,7 +463,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>智邦</span> <span class="code">2345</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>智邦</span> <span class="code">2345</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-24.1%</div>
@@ -463,7 +477,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>聯亞</span> <span class="code">3081</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>聯亞</span> <span class="code">3081</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-9.7%</div>
@@ -477,7 +491,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>東捷</span> <span class="code">8064</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>東捷</span> <span class="code">8064</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-37.1%</div>
@@ -491,7 +505,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>燿華</span> <span class="code">2367</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>燿華</span> <span class="code">2367</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-44.4%</div>
@@ -505,7 +519,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>金居</span> <span class="code">8358</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>金居</span> <span class="code">8358</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-24.2%</div>
@@ -519,7 +533,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>台達電</span> <span class="code">2308</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>台達電</span> <span class="code">2308</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-35.4%</div>
@@ -533,7 +547,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>臻鼎-KY</span> <span class="code">4958</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>臻鼎-KY</span> <span class="code">4958</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-16.9%</div>
@@ -547,7 +561,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>華通</span> <span class="code">2313</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>華通</span> <span class="code">2313</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-27.6%</div>
@@ -561,7 +575,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>金像電</span> <span class="code">2368</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>金像電</span> <span class="code">2368</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-21.2%</div>
@@ -575,7 +589,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>台虹</span> <span class="code">8039</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日，跌破半年線警訊</span></div></div>
+      <div class="name-block"><div class="name-row"><span>台虹</span> <span class="code">8039</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日，跌破半年線警訊</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-32.3%</div>
@@ -589,7 +603,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>華星光</span> <span class="code">4979</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日（貼近10日線0.33%，僅供參考）</span></div></div>
+      <div class="name-block"><div class="name-row"><span>華星光</span> <span class="code">4979</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日（貼近10日線0.33%，僅供參考）</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-39.0%</div>
@@ -603,7 +617,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>波若威</span> <span class="code">3163</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
+      <div class="name-block"><div class="name-row"><span>波若威</span> <span class="code">3163</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-46.0%</div>
@@ -617,7 +631,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>合晶</span> <span class="code">6182</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日（貼近10日線0.36%，僅供參考）</span></div></div>
+      <div class="name-block"><div class="name-row"><span>合晶</span> <span class="code">6182</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日（貼近10日線0.36%，僅供參考）</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-42.1%</div>
@@ -638,7 +652,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>大毅</span> <span class="code">2478</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>大毅</span> <span class="code">2478</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-30.9%</div>
@@ -652,7 +666,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>邁科</span> <span class="code">6831</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>邁科</span> <span class="code">6831</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-64.4%</div>
@@ -666,7 +680,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>泰藝</span> <span class="code">8289</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>泰藝</span> <span class="code">8289</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-46.4%</div>
@@ -680,7 +694,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>頎邦</span> <span class="code">6147</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>頎邦</span> <span class="code">6147</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-28.2%</div>
@@ -694,7 +708,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>雷科</span> <span class="code">6207</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>雷科</span> <span class="code">6207</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-26.6%</div>
@@ -708,7 +722,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>晶技</span> <span class="code">3042</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>晶技</span> <span class="code">3042</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-41.5%</div>
@@ -722,7 +736,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>國巨*</span> <span class="code">2327</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>國巨*</span> <span class="code">2327</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-37.9%</div>
@@ -736,7 +750,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>信昌電</span> <span class="code">6173</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>信昌電</span> <span class="code">6173</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-44.1%</div>
@@ -750,7 +764,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>欣興</span> <span class="code">3037</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>欣興</span> <span class="code">3037</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-20.4%</div>
@@ -764,7 +778,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>南亞科</span> <span class="code">2408</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>南亞科</span> <span class="code">2408</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-26.7%</div>
@@ -778,7 +792,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>辛耘</span> <span class="code">3583</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
+      <div class="name-block"><div class="name-row"><span>辛耘</span> <span class="code">3583</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-44.1%</div>
@@ -792,7 +806,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
-      <div class="name-block"><div class="name-row"><span>環宇-KY</span> <span class="code">4991</span></div><div class="badge-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈（貼近10日線0.13%，僅供參考）</span></div></div>
+      <div class="name-block"><div class="name-row"><span>環宇-KY</span> <span class="code">4991</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">空方反彈（貼近10日線0.13%，僅供參考）</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-36.1%</div>
@@ -807,7 +821,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#C6E8C6"></div>
-      <div class="name-block"><div class="name-row"><span>正達</span> <span class="code">3149</span></div><div class="badge-line"><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">四海遊龍(多頭觀察，站穩第二日)（貼近月線0.15%，僅供參考），觸及季線並站上</span></div></div>
+      <div class="name-block"><div class="name-row"><span>正達</span> <span class="code">3149</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">四海遊龍(多頭觀察，站穩第二日)（貼近月線0.15%，僅供參考），觸及季線並站上</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-33.7%</div>
@@ -850,12 +864,16 @@
 
 </div>
 <div class="tab-panel" id="panel-filters">
+<!-- 2026/11/13 RAY要求：型態膠囊預設隱藏，按右上角懸浮按鈕才顯示(純CSS checkbox，不靠JS) -->
+<input type="checkbox" id="ma-toggle" class="ma-toggle-input">
+<label for="ma-toggle" class="ma-fab"><span class="off">顯示型態</span><span class="on">隱藏型態</span></label>
+<div class="filters-body">
 <div class="section-title">1 均線首日</div><div class="empty">今天沒有均線首日的股票</div><div class="section-title">2 換手驗證突破（站上爆量日高點）</div><div class="empty">今天沒有換手驗證突破的股票</div><div class="section-title">3 大戶買賣力前5名（數值由高至低，範圍：大戶買賣選股＋鎖股觀察）</div>
 <details class="card">
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>富喬</span> <span class="code">1815</span></div><div class="badge-line"><span class="ma-tag" style="--c:#C6E8C6"><i></i>四海遊龍(多頭觀察，站穩第二日)，觸及月線並站上</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.92倍，近20日最大量</span><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連十二買</span></div></div>
+      <div class="name-block"><div class="name-row"><span>富喬</span> <span class="code">1815</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#C6E8C6"><i></i>四海遊龍(多頭觀察，站穩第二日)，觸及月線並站上</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.92倍，近20日最大量</span><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連十二買</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數5</div>
@@ -874,7 +892,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>華邦電</span> <span class="code">2344</span></div><div class="badge-line"><span class="ma-tag" style="--c:#A32020"><i></i>四面楚歌(首日)，跌破爆量日低點</span></div></div>
+      <div class="name-block"><div class="name-row"><span>華邦電</span> <span class="code">2344</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#A32020"><i></i>四面楚歌(首日)，跌破爆量日低點</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數4</div>
@@ -893,7 +911,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>臻鼎-KY</span> <span class="code">4958</span></div><div class="badge-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連二十三買，與融資餘額背離</span></div></div>
+      <div class="name-block"><div class="name-row"><span>臻鼎-KY</span> <span class="code">4958</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連二十三買，與融資餘額背離</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數4</div>
@@ -912,7 +930,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>華新科</span> <span class="code">2492</span></div><div class="badge-line"><span class="ma-tag" style="--c:#A32020"><i></i>四面楚歌(首日)</span></div></div>
+      <div class="name-block"><div class="name-row"><span>華新科</span> <span class="code">2492</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#A32020"><i></i>四面楚歌(首日)</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數3</div>
@@ -931,7 +949,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>欣興</span> <span class="code">3037</span></div><div class="badge-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>空方反彈</span></div><div class="badge-line"><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連六買</span></div></div>
+      <div class="name-block"><div class="name-row"><span>欣興</span> <span class="code">3037</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>空方反彈</span></div><div class="badge-line"><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連六買</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數4</div>
@@ -950,7 +968,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>華通</span> <span class="code">2313</span></div><div class="badge-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">2.3倍</span></div></div>
+      <div class="name-block"><div class="name-row"><span>華通</span> <span class="code">2313</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">2.3倍</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數4</div>
@@ -1026,7 +1044,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>金居</span> <span class="code">8358</span></div><div class="badge-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.2倍，近20日最大量</span></div></div>
+      <div class="name-block"><div class="name-row"><span>金居</span> <span class="code">8358</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.2倍，近20日最大量</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數3</div>
@@ -1045,7 +1063,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>燿華</span> <span class="code">2367</span></div><div class="badge-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.98倍，近20日最大量</span><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">外資連四買，與融資餘額背離</span></div></div>
+      <div class="name-block"><div class="name-row"><span>燿華</span> <span class="code">2367</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.98倍，近20日最大量</span><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">外資連四買，與融資餘額背離</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數3</div>
@@ -1064,7 +1082,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>富喬</span><span class="hit-count">2</span> <span class="code">1815</span></div><div class="badge-line"><span class="ma-tag" style="--c:#C6E8C6"><i></i>四海遊龍(多頭觀察，站穩第二日)，觸及月線並站上</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.92倍，近20日最大量</span><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連十二買</span></div></div>
+      <div class="name-block"><div class="name-row"><span>富喬</span><span class="hit-count">2</span> <span class="code">1815</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#C6E8C6"><i></i>四海遊龍(多頭觀察，站穩第二日)，觸及月線並站上</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.92倍，近20日最大量</span><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連十二買</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數5</div>
@@ -1082,7 +1100,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>大量</span><span class="hit-count">1</span> <span class="code">3167</span></div><div class="badge-line"><span class="ma-tag" style="--c:#C6E8C6"><i></i>跌深續彈(站上季線、五日、十日)，觸及季線並站上</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.68倍，近20日最大量</span></div></div>
+      <div class="name-block"><div class="name-row"><span>大量</span><span class="hit-count">1</span> <span class="code">3167</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#C6E8C6"><i></i>跌深續彈(站上季線、五日、十日)，觸及季線並站上</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">1.68倍，近20日最大量</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數6</div>
@@ -1100,7 +1118,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>華通</span><span class="hit-count">1</span> <span class="code">2313</span></div><div class="badge-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">2.3倍</span></div></div>
+      <div class="name-block"><div class="name-row"><span>華通</span><span class="hit-count">1</span> <span class="code">2313</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">2.3倍</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數4</div>
@@ -1118,7 +1136,7 @@
   <summary class="card-head">
     <div class="left stack">
       <div class="dot" style="background:#1E7B34"></div>
-      <div class="name-block"><div class="name-row"><span>臻鼎-KY</span><span class="hit-count">1</span> <span class="code">4958</span></div><div class="badge-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連二十三買，與融資餘額背離</span></div></div>
+      <div class="name-block"><div class="name-row"><span>臻鼎-KY</span><span class="hit-count">1</span> <span class="code">4958</span></div><div class="badge-line ma-line"><span class="ma-tag" style="--c:#BBD6F0"><i></i>反彈站穩十日</span></div><div class="badge-line"><span class="vol-badge" style="background:#C6E8C6;color:#1a1a1a">投信連二十三買，與融資餘額背離</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;">
       <div class="code">分數4</div>
@@ -1132,6 +1150,7 @@
   </div>
 </details>
 
+</div>
 </div>
 <div class="tab-panel" id="panel-watchlist">
 
@@ -1147,7 +1166,7 @@
 <script>
 /* 2026/11/04：自動換成最新版(publish_entry_report.py 上傳時補的) */
 (function () {
-  var V = '20261113-001117';
+  var V = '20261113-002248';
   function check() {
     fetch('entry-version.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { return r.json(); })
