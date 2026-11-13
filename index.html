@@ -690,6 +690,8 @@
     { key: 'entry_cost', label: '原始成本', fmt: fmtMoney },
     { key: 'cover_cost', label: '賣出收回金額', fmt: fmtMoney },
     { key: 'pnl', label: '已實現損益', fmt: fmtMoney, pnlColor: true },
+    { key: 'ex_dividend', label: '其中歷年配息', fmt: fmtMoney, hideEmpty: true },
+    { key: 'price_pnl', label: '只看價差損益', fmt: fmtMoney, pnlColor: true, hideEmpty: true },
     { key: 'pr_ratio', label: '報酬率', fmt: (v) => fmtPct(v, 2), pnlColor: true },
   ];
 
@@ -744,7 +746,8 @@
       const grid = document.createElement('div');
       grid.className = 'detail-grid';
       RP_FIELDS.forEach(f => {
-        const raw = r[f.key];
+        const raw = f.key === 'price_pnl' ? (r.ex_dividend ? r.pnl - r.ex_dividend : null) : r[f.key];
+        if (f.hideEmpty && !raw) return;
         const field = document.createElement('div');
         field.className = 'detail-field';
         field.innerHTML = '<div class="f-label"></div><div class="f-value"></div>';
