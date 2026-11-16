@@ -187,7 +187,7 @@
 </head>
 <body>
 <h1>入場出場速覽</h1>
-<div class="subtitle">資料來源: 進場訊號快篩_20261116_1315.xlsx　產出時間: 2026-11-16 13:16</div>
+<div class="subtitle">資料來源: 進場訊號快篩_20261116_1315.xlsx　產出時間: 2026-11-16 19:42</div>
 
 <input type="radio" name="tabs" id="tab-cards" class="tab-input" checked>
 <input type="radio" name="tabs" id="tab-table" class="tab-input">
@@ -200,7 +200,7 @@
   <label for="tab-watchlist" class="tab-btn">長線區表格</label>
 </div>
 <div class="tab-panel" id="panel-cards">
-<div class="section-title">🟩 虧損區（越上面越該優先處理）（43檔）</div>
+<div class="section-title">🟩 虧損區（越上面越該優先處理）（41檔）</div>
 <details class="zone-group" style="--c:#A32020">
   <summary>
     <div><span class="g-name">四面楚歌</span><span class="g-meta">40檔｜-67.0% ~ -8.6%</span></div>
@@ -771,34 +771,6 @@
 <details class="card">
   <summary class="card-head">
     <div class="left stack">
-      <div class="dot" style="background:#FCE699"></div>
-      <div class="name-block"><div class="name-row"><span>正達</span> <span class="code">3149</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">均線糾結(人工核對)（貼近季線0.04%、月線0.22%，僅供參考），跌破爆量日低點</span></div></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-34.2%</div>
-      <div class="arrow">▶</div>
-    </div>
-  </summary>
-  <div class="card-body"><div class="reason">估算損益：<b style="color:#1E7B34">-10,443 元（-34.19%）</b></div><div class="reason">目前價格 67｜成本均價 101.81｜股數 300</div><div class="reason">爆量日換手驗證：凶多吉少(跌破115/11/13低點69.1)</div><div class="reason">今日量對昨日倍數：0.62倍</div><div class="reason">分時大戶買賣力：淨值-48張（-37）</div><div class="reason">資金輪動象限：落後區</div><div class="reason">綜合分數：0</div></div>
-</details>
-
-<details class="card">
-  <summary class="card-head">
-    <div class="left stack">
-      <div class="dot" style="background:#FCE699"></div>
-      <div class="name-block"><div class="name-row"><span>燿華</span> <span class="code">2367</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#FCE699;color:#1a1a1a">反彈修正(十日未破)（貼近10日線0.32%，僅供參考），跌破爆量日低點</span></div></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;">
-      <div class="code" style="color:#1E7B34;font-weight:bold;white-space:nowrap">-47.3%</div>
-      <div class="arrow">▶</div>
-    </div>
-  </summary>
-  <div class="card-body"><div class="reason">估算損益：<b style="color:#1E7B34">-33,500 元（-47.32%）</b></div><div class="reason">目前價格 37.3｜成本均價 70.8｜股數 1,000</div><div class="reason">爆量日換手驗證：凶多吉少(跌破115/11/12低點38.75)</div><div class="reason">今日量對昨日倍數：0.98倍</div><div class="reason">分時大戶買賣力：淨值0張（-56）</div><div class="reason">資金輪動象限：落後區</div><div class="reason">綜合分數：2</div></div>
-</details>
-
-<details class="card">
-  <summary class="card-head">
-    <div class="left stack">
       <div class="dot" style="background:#BBD6F0"></div>
       <div class="name-block"><div class="name-row"><span>華通</span> <span class="code">2313</span></div><div class="badge-line ma-line"><span class="vol-badge" style="background:#BBD6F0;color:#1a1a1a">反彈站穩十日（貼近5日線0.05%，僅供參考）</span></div></div>
     </div>
@@ -885,7 +857,7 @@
 <script>
 /* 2026/11/04：自動換成最新版(publish_entry_report.py 上傳時補的) */
 (function () {
-  var V = '20261116-131657';
+  var V = '20261116-194250';
   function check() {
     fetch('entry-version.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { return r.json(); })
