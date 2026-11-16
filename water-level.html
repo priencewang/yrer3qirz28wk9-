@@ -188,6 +188,11 @@
   .wd-msg.warn { background: var(--warn-bg); color: var(--warn-text); }
   .wd-reset { font-family: inherit; font-size: 12px; border: 1px solid var(--border); background: var(--page-plane); color: var(--text-secondary); padding: 5px 10px; border-radius: 8px; cursor: pointer; }
   .gain-t { color: var(--gain); } .loss-t { color: var(--loss); }
+  .wd-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .wd-mode { font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-secondary); cursor: pointer; }
+  .wd-mode.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .wd-chk { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 6px; }
+  .wd-mode-note { font-size: 11.5px; color: var(--text-muted); line-height: 1.55; margin-bottom: 10px; }
   .footnote { font-size: 11.5px; color: var(--text-muted); line-height: 1.7; margin-top: 8px; }
   .footnote p { margin: 0 0 6px; }
   @media (max-width: 420px) {
@@ -306,7 +311,7 @@
 
 
     <div class="card" id="wd-card">
-      <div class="h2-row"><h2>9 · 資金收回試算</h2><button class="wd-reset" id="wd-auto" type="button">重新自動分配</button></div>
+      <div class="h2-row"><h2>9 · 資金收回試算</h2></div>
       <p class="sub">設定想收回多少錢、最多能接受虧多少，再選要賣哪幾檔，下面會算出每檔賣幾股。每檔的拉桿也可以自己左右拖，總數會跟著變。選過的股票會記在這支手機上。</p>
       <div class="wd-field">
         <div class="lab">預計收回資金 <span><input class="wd-num" id="wd-cash-num" type="number" inputmode="numeric" step="1000" min="0"> 元</span></div>
@@ -318,6 +323,12 @@
         <input type="range" id="wd-loss" min="0" step="1000">
         <div class="wd-scale"><span>0</span><span id="wd-loss-mid"></span><span id="wd-loss-max"></span></div>
       </div>
+      <div class="wd-modes">
+        <button class="wd-mode" id="wd-smart" type="button">🧠 智慧挑選</button>
+        <button class="wd-mode" id="wd-auto" type="button">自選股平均分配</button>
+      </div>
+      <label class="wd-chk"><input type="checkbox" id="wd-keep-long" checked> 智慧挑選時也排除台積電（長線）</label>
+      <div class="wd-mode-note" id="wd-mode-note"></div>
       <div class="wd-pick"><select id="wd-select"></select></div>
       <div id="wd-list"></div>
       <div class="wd-sum" id="wd-sum"></div>
@@ -652,17 +663,27 @@
   const stocks = (DATA.holdings || []).filter(h => h.shares > 0 && h.value > 1).map(h => ({
     code: h.code, name: h.name, shares: h.shares, price: h.price,
     net: h.value / h.shares, cost: h.cost / h.shares, value: h.value, pnl: h.pnl || 0,
+    etf: String(h.code).startsWith('00'), long: !!h.long_term,
   }));
   if (!stocks.length) { $('wd-card').style.display = 'none'; return; }
   const byCode = Object.fromEntries(stocks.map(s => [s.code, s]));
   let picked = [];   // [{code, sell}]
   let cash = 0, lossCap = 0;
+  let mode = 'smart';          // 'smart'＝智慧挑選、'prop'＝自選股平均分配
+  let excluded = [];           // 智慧挑選時按×拿掉的股票(不想賣的)
+  let keepLong = true;         // 智慧挑選時也排除台積電等長線個股
   try {
     const sv = JSON.parse(localStorage.getItem('wd_state') || '{}');
     picked = (sv.picked || []).filter(p => byCode[p.code]).map(p => ({ code: p.code, sell: Math.min(p.sell || 0, byCode[p.code].shares) }));
     cash = sv.cash || 0; lossCap = sv.lossCap || 0;
+    if (sv.mode) mode = sv.mode;
+    excluded = (sv.excluded || []).filter(c => byCode[c]);
+    if (sv.keepLong === false) keepLong = false;
   } catch (e) {}
-  const save = () => { try { localStorage.setItem('wd_state', JSON.stringify({ picked, cash, lossCap })); } catch (e) {} };
+  const save = () => { try { localStorage.setItem('wd_state', JSON.stringify({ picked, cash, lossCap, mode, excluded, keepLong })); } catch (e) {} };
+  // 智慧挑選的候選池：排除ETF、(勾選時)長線個股、按×拿掉的
+  // 市值不到5,000的零碎部位也不挑(券商手續費最低20元，賣幾百元的零股不划算)
+  const smartPool = () => stocks.filter(s => !s.etf && !(keepLong && s.long) && !excluded.includes(s.code) && s.value >= 5000);
 
   function fillSelect() {
     const used = new Set(picked.map(p => p.code));
@@ -675,17 +696,44 @@
   // 拉桿範圍：收回資金上限＝已選股票全賣實拿；虧損上限＝已選股票裡賠錢的全賣會虧多少
   // (還沒選股票時，先用全部庫存當範圍，讓你可以先設定目標)
   function ranges() {
-    const ps = picked.length ? picked.map(p => byCode[p.code]) : stocks;
+    const ps = mode === 'smart' ? smartPool() : (picked.length ? picked.map(p => byCode[p.code]) : stocks);
     const maxCash = Math.ceil(ps.reduce((a, s) => a + s.value, 0) / 1000) * 1000;
     const maxLoss = Math.ceil(ps.reduce((a, s) => a + Math.max(0, -s.pnl), 0) / 1000) * 1000;
     $('wd-cash').max = maxCash; $('wd-cash-max').textContent = money(maxCash); $('wd-cash-mid').textContent = money(maxCash / 2);
     $('wd-loss').max = maxLoss; $('wd-loss-max').textContent = money(maxLoss); $('wd-loss-mid').textContent = money(maxLoss / 2);
-    if (picked.length) { cash = Math.min(cash, maxCash); lossCap = Math.min(lossCap, maxLoss); }
+    if (mode === 'smart' || picked.length) { cash = Math.min(cash, maxCash); lossCap = Math.min(lossCap, maxLoss); }
     $('wd-cash').value = $('wd-cash-num').value = cash;
     $('wd-loss').value = $('wd-loss-num').value = lossCap;
   }
-  // 自動分配：已選的每檔賣「同一個比例」f，f取三者最小：收回目標÷全賣實拿、虧損上限÷全賣淨虧損、1(全賣)
+  // 智慧挑選(2026/11/17 RAY要求)：目標是「收回一樣多的錢、虧最少」。
+  // 每檔股票算「每收回1元要虧幾元」＝(每股成本−每股實拿)÷每股實拿，賺錢的股票是負數(賣了反而賺)。
+  // 由小到大挑：賺錢的先賣、虧損率低的再來，一檔賣完才換下一檔，湊到收回目標就停；
+  // 如果先碰到虧損上限，就只賣到上限為止、後面虧損率更高的都不碰(這時候收回的錢就是上限內最多的)。
+  // 這是「分數背包問題」的貪婪解法，在不能超過虧損上限的前提下就是最佳解(股數取整數會有一點點誤差)。
+  function smartPick() {
+    const pool = smartPool().map(s => ({ s, ratio: (s.cost - s.net) / s.net })).sort((a, b) => a.ratio - b.ratio);
+    let got = 0, real = 0;
+    const out = [];
+    for (const { s } of pool) {
+      if (got >= cash) break;
+      const perLoss = s.cost - s.net;     // 每股會虧多少(負數＝每股賺)
+      let n = Math.min(s.shares, Math.ceil((cash - got) / s.net));
+      if (perLoss > 0) {
+        const room = lossCap + real;      // 還能再虧多少
+        if (room <= 0) break;
+        n = Math.min(n, Math.floor(room / perLoss));
+      }
+      if (n <= 0) break;
+      out.push({ code: s.code, sell: n });
+      got += n * s.net; real -= n * perLoss;
+      if (perLoss > 0 && n < s.shares && got < cash) break;   // 被虧損上限卡住
+    }
+    picked = out;
+    save();
+  }
+  // 自選股平均分配：已選的每檔賣「同一個比例」f，f取三者最小：收回目標÷全賣實拿、虧損上限÷全賣淨虧損、1(全賣)
   function autoAllocate() {
+    if (mode === 'smart') { smartPick(); fillSelect(); return; }
     const ps = picked.map(p => byCode[p.code]);
     const V = ps.reduce((a, s) => a + s.value, 0);
     const P = ps.reduce((a, s) => a + s.pnl, 0);
@@ -714,7 +762,7 @@
       '<div class="t"><div class="l">賣出後可用現金</div><div class="v">' + money((DATA.available_cash || 0) + got) + '</div><div class="d">現在 ' + money(DATA.available_cash || 0) + '</div></div>' +
       '<div class="t"><div class="l">賣出後市值水位</div><div class="v">' + (after == null ? '—' : after.toFixed(1) + '%') + '</div><div class="d">現在 ' + (DATA.water_level != null ? DATA.water_level.toFixed(1) + '%' : '—') + '</div></div>';
     const msg = $('wd-msg'); msg.className = 'wd-msg';
-    if (!picked.length) { msg.textContent = '先用上面的選單加入要賣的股票（未實現虧損最多的排前面）。'; return; }
+    if (!picked.length) { msg.textContent = mode === 'smart' ? (cash ? '虧損上限太低，一股都賣不了；請提高最多接受虧損。' : '先設定預計收回資金和最多接受虧損，會自動挑出要賣的股票。') : '先用上面的選單加入要賣的股票（未實現虧損最多的排前面）。'; return; }
     const notes = [];
     if (real < 0 && -real > lossCap + 0.5) { notes.push('⚠️ 虧損 ' + money(-real) + ' 超過你設的上限 ' + money(lossCap) + '。'); msg.classList.add('warn'); }
     if (got + 0.5 < cash) {
@@ -723,7 +771,7 @@
       msg.classList.add('warn');
     }
     if (!notes.length && cash) notes.push('✅ 收回目標達成，虧損在上限內。');
-    notes.push('自動分配＝每檔賣同樣比例（股數無條件捨去，含零股）；拖個別拉桿可以自己調。用前一交易日收盤價估算，已扣賣出手續費、證交稅，實際成交價不同會有差。');
+    notes.push((mode === 'smart' ? '智慧挑選＝依每收回1元虧多少由小到大挑' : '平均分配＝每檔賣同樣比例（股數無條件捨去，含零股）') + '；拖個別拉桿可以自己調。用前一交易日收盤價估算，已扣賣出手續費、證交稅，實際成交價不同會有差。');
     msg.innerHTML = notes.join('<br>');
   }
   function render() {
@@ -733,7 +781,7 @@
       const el = document.createElement('div'); el.className = 'wd-stock';
       el.innerHTML =
         '<div class="top"><span>' + s.name + ' <span style="color:var(--text-muted);font-weight:400;font-size:12px">' + s.code + '</span></span><button class="x" type="button" aria-label="移除">×</button></div>' +
-        '<div class="meta">持有 ' + s.shares.toLocaleString() + ' 股｜收盤 ' + s.price + '｜成本均價 ' + s.cost.toFixed(2) + '｜未實現 <span class="' + (s.pnl >= 0 ? 'gain-t' : 'loss-t') + '">' + signed(s.pnl) + '</span></div>' +
+        '<div class="meta">持有 ' + s.shares.toLocaleString() + ' 股｜收盤 ' + s.price + '｜成本均價 ' + s.cost.toFixed(2) + '｜未實現 <span class="' + (s.pnl >= 0 ? 'gain-t' : 'loss-t') + '">' + signed(s.pnl) + '</span>' + (mode === 'smart' ? '｜每收回$1' + ((s.cost - s.net) / s.net > 0 ? '虧' : '賺') + Math.abs((s.cost - s.net) / s.net).toFixed(2) + '元' : '') + '</div>' +
         '<div class="sellrow"><span>賣出 <b class="sv"></b> 股</span><span class="lt" style="color:var(--text-muted)"></span></div>' +
         '<input type="range" min="0" max="' + s.shares + '" step="1" value="' + p.sell + '">' +
         '<div class="wd-scale"><span>0</span><span>' + Math.round(s.shares / 2).toLocaleString() + '</span><span>' + s.shares.toLocaleString() + '</span></div>' +
@@ -746,7 +794,10 @@
         el.querySelector('.rr').innerHTML = '實現 <span class="' + (r > 0 ? 'gain-t' : r < 0 ? 'loss-t' : '') + '">' + signed(r) + '</span>';
       };
       upd();
-      el.querySelector('.x').addEventListener('click', () => { picked.splice(i, 1); fillSelect(); ranges(); autoAllocate(); render(); });
+      el.querySelector('.x').addEventListener('click', () => {
+        if (mode === 'smart') excluded.push(p.code); else picked.splice(i, 1);
+        fillSelect(); ranges(); autoAllocate(); render();
+      });
       // 拖個別拉桿：只更新這張卡跟總計，不重畫整個清單(重畫會讓手指拖到一半斷掉)
       el.querySelector('input').addEventListener('input', e => { p.sell = +e.target.value; save(); upd(); renderSummary(); });
       list.appendChild(el);
@@ -755,8 +806,13 @@
   }
   $('wd-select').addEventListener('change', e => {
     if (!e.target.value) return;
-    picked.push({ code: e.target.value, sell: 0 });
-    fillSelect(); ranges(); autoAllocate(); render();
+    const c = e.target.value;
+    if (mode === 'smart') {
+      // 智慧模式下加入＝改成自選模式，從目前挑出來的名單再加這檔
+      mode = 'prop'; excluded = [];
+    }
+    picked.push({ code: c, sell: 0 });
+    syncMode(); fillSelect(); ranges(); autoAllocate(); render();
   });
   const link = (rid, nid, setter) => {
     $(rid).addEventListener('input', e => { setter(+e.target.value); $(nid).value = e.target.value; autoAllocate(); render(); save(); });
@@ -767,8 +823,22 @@
   };
   link('wd-cash', 'wd-cash-num', v => { cash = v; });
   link('wd-loss', 'wd-loss-num', v => { lossCap = v; });
-  $('wd-auto').addEventListener('click', () => { autoAllocate(); render(); });
-  fillSelect(); ranges(); render();
+  function syncMode() {
+    $('wd-smart').classList.toggle('is-active', mode === 'smart');
+    $('wd-auto').classList.toggle('is-active', mode === 'prop');
+    $('wd-keep-long').checked = keepLong;
+    $('wd-mode-note').innerHTML = mode === 'smart'
+      ? '從庫存個股自動挑（排除ETF' + (keepLong ? '、台積電' : '') + '、市值不到$5,000的零碎股）：每收回1元虧最少的先賣，賺錢的會最先被挑；湊到收回目標就停，碰到虧損上限也停。不想賣的按 × 拿掉會自動重挑' + (excluded.length ? '（已拿掉 ' + excluded.map(c => byCode[c].name).join('、') + '，<a href="#" id="wd-unex">全部放回</a>）' : '') + '。'
+      : '只在你自己加入的股票之間分配，每檔賣同樣比例。';
+    const un = $('wd-unex');
+    if (un) un.addEventListener('click', ev => { ev.preventDefault(); excluded = []; syncMode(); ranges(); autoAllocate(); render(); });
+  }
+  $('wd-smart').addEventListener('click', () => { mode = 'smart'; syncMode(); ranges(); autoAllocate(); render(); });
+  $('wd-auto').addEventListener('click', () => {
+    mode = 'prop'; syncMode(); ranges(); autoAllocate(); render();
+  });
+  $('wd-keep-long').addEventListener('change', e => { keepLong = e.target.checked; syncMode(); if (mode === 'smart') { ranges(); autoAllocate(); render(); } else save(); });
+  syncMode(); fillSelect(); ranges(); render();
 })();
 </script>
 </body>
