@@ -1093,10 +1093,12 @@
     $('wd-ld-sub').textContent = live ? '（跌停賣不掉；目前 ' + nld + ' 檔跌停）' : '（要先抓即時價才知道誰跌停）';
     renderPats();
     $('wd-mode-note').innerHTML = mode === 'smart'
-      ? '從庫存個股自動挑（排除ETF' + (keepLong ? '、台積電' : '') + '、市值不到$5,000的零碎股' + (skipLD && live ? '、跌停股' : '') + (pats.length ? '；只挑 ' + pats.join('、') : '') + '）：照先進先出逐批算，每收回1元虧最少的先賣，賺錢的會最先被挑；湊到收回目標就停，碰到虧損上限也停（收回資金填0＝虧損上限內盡量收回最多）。不想賣的按 × 拿掉會自動重挑' + (excluded.length ? '（已拿掉 ' + excluded.map(c => byCode[c].name).join('、') + '，<a href="#" id="wd-unex">全部放回</a>）' : '') + '。'
+      ? '從庫存個股自動挑（排除ETF' + (keepLong ? '、台積電' : '') + '、市值不到$5,000的零碎股' + (skipLD && live ? '、跌停股' : '') + (pats.length ? '；只挑 ' + pats.join('、') : '') + '）：照先進先出逐批算，每收回1元虧最少的先賣，賺錢的會最先被挑；湊到收回目標就停，碰到虧損上限也停（收回資金填0＝虧損上限內盡量收回最多）。不想賣的按 × 拿掉會自動重挑' + (excluded.length ? '（已拿掉，點名字放回那一檔：' + excluded.map(c => '<a href="#" class="wd-unex1" data-c="' + c + '">' + byCode[c].name + ' ↩</a>').join('、') + (excluded.length > 1 ? '｜<a href="#" id="wd-unex">全部放回</a>' : '') + '）' : '') + '。'
       : '只在你自己加入的股票之間分配，每檔賣同樣比例。';
     const un = $('wd-unex');
     if (un) un.addEventListener('click', ev => { ev.preventDefault(); excluded = []; syncMode(); ranges(); autoAllocate(); render(); });
+    // 2026/11/18 RAY要求：點名字只放回那一檔
+    document.querySelectorAll('.wd-unex1').forEach(el => el.addEventListener('click', ev => { ev.preventDefault(); excluded = excluded.filter(c => c !== el.dataset.c); syncMode(); ranges(); autoAllocate(); render(); }));
   }
   $('wd-pat-clear').addEventListener('click', ev => { ev.preventDefault(); pats = []; renderPats(); ranges(); autoAllocate(); render(); });
   $('wd-smart').addEventListener('click', () => { mode = 'smart'; syncMode(); ranges(); autoAllocate(); render(); });
