@@ -824,7 +824,9 @@
     const blocked = new Set();             // 被虧損上限卡住、連1股都不能再賣的
     const order = [];                      // 挑到的先後順序(代碼是數字字串，物件key會被自動排序，所以另外記)
     let got = 0, real = 0;
-    for (let guard = 0; guard < 500 && got < cash; guard++) {
+    // 2026/11/17 RAY：收回資金填0＝不設目標，在虧損上限內盡量收回最多
+    const goal = cash > 0 ? cash : Infinity;
+    for (let guard = 0; guard < 500 && got < goal; guard++) {
       let best = null;
       for (const s of pool) {
         if (blocked.has(s.code)) continue;
@@ -842,12 +844,12 @@
       const s = best.s;
       let k = sold[s.code] || 0, took = 0, stuck = false;
       for (const x of fifo(s, best.n, k)) {
-        if (got >= cash) break;
+        if (got >= goal) break;
         const perLoss = x.c - s.net;       // 這批每股虧多少(負數＝每股賺)
-        let n = Math.min(x.n, Math.ceil((cash - got) / s.net));
+        let n = Math.min(x.n, Math.ceil((goal - got) / s.net));
         if (perLoss > 0) n = Math.min(n, Math.floor((lossCap + real) / perLoss));
         if (n > 0) { got += n * s.net; real -= n * perLoss; took += n; }
-        if (n < x.n && got < cash) { stuck = true; break; }  // 被虧損上限卡住
+        if (n < x.n && got < goal) { stuck = true; break; }  // 被虧損上限卡住
       }
       if (took > 0 && !k) order.push(s.code);
       sold[s.code] = k + took;
@@ -891,12 +893,12 @@
     const dv = liveDelta();
     const after = DATA.total_assets ? (DATA.stock_value + dv - got) / (DATA.total_assets + dv) * 100 : null;
     $('wd-sum').innerHTML = !picked.length ? '' :
-      '<div class="t"><div class="l">合計收回</div><div class="v">' + money(got) + '</div><div class="d">目標 ' + money(cash) + (cash ? '（達成 ' + Math.round(got / cash * 100) + '%）' : '') + '</div></div>' +
+      '<div class="t"><div class="l">合計收回</div><div class="v">' + money(got) + '</div><div class="d">' + (cash ? '目標 ' + money(cash) + '（達成 ' + Math.round(got / cash * 100) + '%）' : '沒設目標：上限內盡量收回') + '</div></div>' +
       '<div class="t"><div class="l">合計已實現</div><div class="v ' + (real > 0 ? 'gain-t' : real < 0 ? 'loss-t' : '') + '">' + signed(real) + '</div><div class="d">虧損上限 ' + money(lossCap) + '</div></div>' +
       '<div class="t"><div class="l">賣出後可用現金</div><div class="v">' + money((DATA.available_cash || 0) + got) + '</div><div class="d">現在 ' + money(DATA.available_cash || 0) + '</div></div>' +
       '<div class="t"><div class="l">賣出後市值水位</div><div class="v">' + (after == null ? '—' : after.toFixed(1) + '%') + '</div><div class="d">現在 ' + (DATA.total_assets ? ((DATA.stock_value + dv) / (DATA.total_assets + dv) * 100).toFixed(1) + '%' : '—') + '</div></div>';
     const msg = $('wd-msg'); msg.className = 'wd-msg';
-    if (!picked.length) { msg.textContent = mode === 'smart' ? (cash ? (pats.length && !smartPool().length ? '勾選的型態裡沒有可以挑的股票。' : '虧損上限太低，一股都賣不了；請提高最多接受虧損。') : '先設定預計收回資金和最多接受虧損，會自動挑出要賣的股票。') : '先用上面的選單加入要賣的股票（未實現虧損最多的排前面）。'; return; }
+    if (!picked.length) { msg.textContent = mode === 'smart' ? (cash || lossCap ? (pats.length && !smartPool().length ? '勾選的型態裡沒有可以挑的股票。' : '虧損上限太低，一股都賣不了；請提高最多接受虧損。') : '先設定預計收回資金和最多接受虧損，會自動挑出要賣的股票。') : '先用上面的選單加入要賣的股票（未實現虧損最多的排前面）。'; return; }
     const notes = [];
     if (real < 0 && -real > lossCap + 0.5) { notes.push('⚠️ 虧損 ' + money(-real) + ' 超過你設的上限 ' + money(lossCap) + '。'); msg.classList.add('warn'); }
     if (got + 0.5 < cash) {
@@ -971,7 +973,7 @@
     $('wd-keep-long').checked = keepLong;
     renderPats();
     $('wd-mode-note').innerHTML = mode === 'smart'
-      ? '從庫存個股自動挑（排除ETF' + (keepLong ? '、台積電' : '') + '、市值不到$5,000的零碎股' + (pats.length ? '；只挑 ' + pats.join('、') : '') + '）：照先進先出逐批算，每收回1元虧最少的先賣，賺錢的會最先被挑；湊到收回目標就停，碰到虧損上限也停。不想賣的按 × 拿掉會自動重挑' + (excluded.length ? '（已拿掉 ' + excluded.map(c => byCode[c].name).join('、') + '，<a href="#" id="wd-unex">全部放回</a>）' : '') + '。'
+      ? '從庫存個股自動挑（排除ETF' + (keepLong ? '、台積電' : '') + '、市值不到$5,000的零碎股' + (pats.length ? '；只挑 ' + pats.join('、') : '') + '）：照先進先出逐批算，每收回1元虧最少的先賣，賺錢的會最先被挑；湊到收回目標就停，碰到虧損上限也停（收回資金填0＝虧損上限內盡量收回最多）。不想賣的按 × 拿掉會自動重挑' + (excluded.length ? '（已拿掉 ' + excluded.map(c => byCode[c].name).join('、') + '，<a href="#" id="wd-unex">全部放回</a>）' : '') + '。'
       : '只在你自己加入的股票之間分配，每檔賣同樣比例。';
     const un = $('wd-unex');
     if (un) un.addEventListener('click', ev => { ev.preventDefault(); excluded = []; syncMode(); ranges(); autoAllocate(); render(); });
@@ -987,11 +989,23 @@
     btn.disabled = true; box.textContent = '向證交所抓即時價中…';
     let ok = false;
     try {
-      const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 30000);
-      const r = await fetch(QUOTE_URL + '?codes=' + stocks.map(s => s.code).join(','), { signal: ctl.signal, cache: 'no-store' });
-      clearTimeout(tm);
-      const j = await r.json();
-      const n = applyQuotes(j.quotes || {});
+      // 證交所偶爾會整批回空的(2026/11/17實測一次只回4檔)，沒抓到的隔2秒再補問，最多補2次
+      const q = {}; let jt = '';
+      let want = stocks.map(s => s.code);
+      for (let round = 0; round < 3 && want.length > 1; round++) {
+        if (round) { box.textContent = '補抓沒抓到的 ' + want.length + ' 檔…'; await new Promise(r => setTimeout(r, 2000)); }
+        try {
+          const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 30000);
+          const r = await fetch(QUOTE_URL + '?codes=' + want.join(','), { signal: ctl.signal, cache: 'no-store' });
+          clearTimeout(tm);
+          const j = await r.json();
+          Object.assign(q, j.quotes || {});
+          if (j.time && j.time > jt) jt = j.time;
+        } catch (e) {}
+        want = want.filter(c => !q[c]);
+      }
+      const j = { time: jt };
+      const n = applyQuotes(q);
       if (n) {
         const now = new Date();
         live = { time: j.time || (String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')), n, from: '' };
