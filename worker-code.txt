@@ -23,13 +23,24 @@ export default {
     const keys = codes.flatMap(c => ['tse_' + c + '.tw', 'otc_' + c + '.tw']);
     const quotes = {};
     let time = '';
+    const errs = [];   // 2026/11/17加：證交所回什麼錯誤，頁面失敗時會秀出來
+    const colo = (request.cf && request.cf.colo) || '';   // 這次是哪個Cloudflare機房去問的
     // 一次問太多證交所會回空的，分批每批60個
     for (let i = 0; i < keys.length; i += 60) {
       const api = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp?json=1&delay=0&_=' + Date.now() +
         '&ex_ch=' + encodeURIComponent(keys.slice(i, i + 60).join('|'));
       try {
-        const r = await fetch(api, { headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://mis.twse.com.tw/stock/index.jsp' } });
-        const j = await r.json();
+        let r, txt, j;
+        // 證交所偶爾回空的或錯誤頁，同一批隔1秒再問一次
+        for (let t = 0; t < 2; t++) {
+          if (t) await new Promise(ok => setTimeout(ok, 1000));
+          r = await fetch(api, { headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://mis.twse.com.tw/stock/index.jsp' } });
+          txt = await r.text();
+          try { j = JSON.parse(txt); } catch (e) { j = null; }
+          if (j && (j.msgArray || []).some(m => m.c)) break;
+        }
+        if (!j) { errs.push('第' + (i / 60 + 1) + '批 HTTP ' + r.status + ' 不是資料：' + txt.slice(0, 60)); continue; }
+        if (!(j.msgArray || []).length) errs.push('第' + (i / 60 + 1) + '批 HTTP ' + r.status + ' 回空的' + (j.rtmessage ? '(' + j.rtmessage + ')' : ''));
         for (const m of j.msgArray || []) {
           if (!m.c) continue;   // 問錯市場(例如上市股問了otc)會回一筆空的，略過
           const num = v => { const x = parseFloat(v); return isFinite(x) && x > 0 ? x : null; };
@@ -42,8 +53,8 @@ export default {
           if (p != null) quotes[m.c] = { p, src };
           if (m.t && m.t > time) time = m.t;
         }
-      } catch (e) { /* 這一批失敗就略過，頁面那邊會顯示沒抓到的股票 */ }
+      } catch (e) { errs.push('第' + (i / 60 + 1) + '批 ' + e.message); }
     }
-    return new Response(JSON.stringify({ time, quotes }), { headers: cors });
+    return new Response(JSON.stringify({ time, quotes, errs, colo }), { headers: cors });
   },
 };
