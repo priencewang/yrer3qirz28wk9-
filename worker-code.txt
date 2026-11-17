@@ -1,0 +1,49 @@
+// Cloudflare Worker：水位表「刷新即時股價」用的中繼站(2026/11/17新增，RAY要求)
+// 為什麼要它：證交所即時報價(mis.twse.com.tw)不允許別的網站在瀏覽器裡直接讀，
+// 所以讓這個小程式在Cloudflare幫忙去拿，再轉給水位表頁面。
+// 用法：https://<你的worker網址>/?codes=3711,8021,2408
+// 回傳：{"time":"13:25:05","quotes":{"3711":{"p":523,"src":"成交"},...}}
+// 安全：只接受股票代碼(數字/英文，最多120檔)，只讓RAY的GitHub Pages網站讀，不能拿來當萬用轉送站。
+
+const ALLOW_ORIGIN = 'https://priencewang.github.io';
+
+export default {
+  async fetch(request) {
+    const cors = {
+      'Access-Control-Allow-Origin': ALLOW_ORIGIN,
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    };
+    const url = new URL(request.url);
+    const codes = (url.searchParams.get('codes') || '')
+      .split(',').map(c => c.trim()).filter(c => /^[0-9A-Z]{4,6}$/.test(c)).slice(0, 120);
+    if (!codes.length) return new Response(JSON.stringify({ error: 'no codes' }), { status: 400, headers: cors });
+
+    // 不知道每檔是上市(tse)還是上櫃(otc)，兩種都問，查不到的那邊證交所會直接略過
+    const keys = codes.flatMap(c => ['tse_' + c + '.tw', 'otc_' + c + '.tw']);
+    const quotes = {};
+    let time = '';
+    // 一次問太多證交所會回空的，分批每批60個
+    for (let i = 0; i < keys.length; i += 60) {
+      const api = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp?json=1&delay=0&_=' + Date.now() +
+        '&ex_ch=' + encodeURIComponent(keys.slice(i, i + 60).join('|'));
+      try {
+        const r = await fetch(api, { headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://mis.twse.com.tw/stock/index.jsp' } });
+        const j = await r.json();
+        for (const m of j.msgArray || []) {
+          if (!m.c) continue;   // 問錯市場(例如上市股問了otc)會回一筆空的，略過
+          const num = v => { const x = parseFloat(v); return isFinite(x) && x > 0 ? x : null; };
+          const bid = num((m.b || '').split('_')[0]), ask = num((m.a || '').split('_')[0]);
+          let p = num(m.z), src = '成交';
+          // 最近5秒沒有成交時z是「-」，改用最佳買賣價中間、再不行用昨收
+          if (p == null && bid && ask) { p = Math.round((bid + ask) / 2 * 100) / 100; src = '買賣中價'; }
+          if (p == null) { p = bid || ask; src = '委買賣價'; }
+          if (p == null) { p = num(m.y); src = '昨收'; }
+          if (p != null) quotes[m.c] = { p, src };
+          if (m.t && m.t > time) time = m.t;
+        }
+      } catch (e) { /* 這一批失敗就略過，頁面那邊會顯示沒抓到的股票 */ }
+    }
+    return new Response(JSON.stringify({ time, quotes }), { headers: cors });
+  },
+};
