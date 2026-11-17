@@ -50,7 +50,7 @@ export default {
           if (p == null && bid && ask) { p = Math.round((bid + ask) / 2 * 100) / 100; src = '買賣中價'; }
           if (p == null) { p = bid || ask; src = '委買賣價'; }
           if (p == null) { p = num(m.y); src = '昨收'; }
-          if (p != null) quotes[m.c] = { p, src };
+          if (p != null) quotes[m.c] = { p, src, w: num(m.w), y: num(m.y) };   // w跌停價、y昨收(頁面判斷跌停用)
           if (m.t && m.t > time) time = m.t;
         }
       } catch (e) { errs.push('第' + (i / 60 + 1) + '批 ' + e.message); }
