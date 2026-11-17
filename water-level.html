@@ -209,6 +209,22 @@
   .wd-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
   .wd-mode { font-family: inherit; font-size: 13.5px; font-weight: 700; padding: 9px 6px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-secondary); cursor: pointer; }
   .wd-mode.is-active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .wd-rank-btn { width: 100%; font-family: inherit; font-size: 13px; font-weight: 700; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-primary); cursor: pointer; margin-bottom: 10px; }
+  .wd-rank-btn.is-on { border-color: var(--accent); color: var(--accent); }
+  .wd-rank { margin: -4px 0 12px; }
+  .wd-rank .hd { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; margin-bottom: 6px; }
+  .wd-rank details { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 5px; background: var(--surface-2); }
+  .wd-rank summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 7px 10px; }
+  .wd-rank summary::-webkit-details-marker { display: none; }
+  .wd-rank .no { flex: none; width: 22px; font-size: 11px; color: var(--text-muted); text-align: right; }
+  .wd-rank .nm { flex: 1; min-width: 0; font-size: 13px; font-weight: 700; }
+  .wd-rank .nm small { display: block; font-weight: 400; font-size: 11px; color: var(--text-muted); }
+  .wd-rank .rt { flex: none; text-align: right; font-size: 15px; font-weight: 700; }
+  .wd-rank .rt small { display: block; font-size: 10.5px; font-weight: 400; color: var(--text-muted); }
+  .wd-rank table { width: 100%; border-collapse: collapse; font-size: 11.5px; margin: 0 0 6px; }
+  .wd-rank td, .wd-rank th { padding: 3px 8px; text-align: right; border-top: 1px solid var(--border); }
+  .wd-rank th { font-weight: 400; color: var(--text-muted); }
+  .wd-rank td:first-child, .wd-rank th:first-child { text-align: left; }
   .wd-chk { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 6px; }
   .wd-mode-note { font-size: 11.5px; color: var(--text-muted); line-height: 1.55; margin-bottom: 10px; }
   .footnote { font-size: 11.5px; color: var(--text-muted); line-height: 1.7; margin-top: 8px; }
@@ -342,6 +358,8 @@
         <div class="wd-scale"><span>0</span><span id="wd-loss-mid"></span><span id="wd-loss-max"></span></div>
       </div>
       <div class="wd-price"><span id="wd-price-text"></span><button class="wd-refresh" id="wd-refresh" type="button">🔄 刷新即時股價</button></div>
+      <button class="wd-rank-btn" id="wd-rank-btn" type="button">📊 全部持股划算排行（每收回$1虧幾元）</button>
+      <div class="wd-rank" id="wd-rank" style="display:none"></div>
       <div class="wd-modes">
         <button class="wd-mode" id="wd-smart" type="button">🧠 智慧挑選</button>
         <button class="wd-mode" id="wd-auto" type="button">自選股平均分配</button>
@@ -932,6 +950,37 @@
     notes.push((mode === 'smart' ? '智慧挑選＝依每收回1元虧多少由小到大挑' : '平均分配＝每檔賣同樣比例（股數無條件捨去，含零股）') + '；虧損照永豐「先進先出」算（分批買的股票先賣最早那批）；拖個別拉桿可以自己調。' + (live ? '用今天 ' + live.time.slice(0, 5) + ' 的即時價估算' : '用前一交易日收盤價估算') + '，已扣賣出手續費、證交稅，實際成交價不同會有差。');
     msg.innerHTML = notes.join('<br>');
   }
+  // ── 全部持股划算排行(2026/11/18 RAY要求)：個股(不含ETF、台積電、市值<5,000零碎股)全部賣掉，
+  // 照先進先出逐批算「每收回1元虧幾元」，小的(最划算)排上面；點開看每一批各自的數字 ──
+  let rankOpen = false;
+  function renderRank() {
+    const box = $('wd-rank');
+    box.style.display = rankOpen ? '' : 'none';
+    $('wd-rank-btn').classList.toggle('is-on', rankOpen);
+    if (!rankOpen) return;
+    const rt = (r, g) => g > 0 ? (r <= 0 ? '虧 ' : '賺 ') + Math.abs(r / g).toFixed(2) : '—';
+    const cls = r => r > 0 ? 'gain-t' : r < 0 ? 'loss-t' : '';
+    const rows = stocks.filter(s => !s.etf && !s.long && s.value >= 5000).map(s => {
+      const g = s.shares * s.net, r = realOf(s, s.shares);
+      return { s, g, r, k: g > 0 ? -r / g : 99 };
+    }).sort((a, b) => a.k - b.k);
+    box.innerHTML = '<div class="hd">' + rows.length + ' 檔個股「全部賣掉」的每收回$1虧幾元（不含ETF、台積電、市值不到$5,000的零碎股），越上面越划算。整檔全賣時每一批都會賣到，所以總數跟平均成本一樣；只賣一部分時永豐先賣最早那批，看點開後每一批的數字。' +
+      (live ? '用今天 ' + live.time.slice(0, 5) + ' 即時價' : '用前一交易日收盤價') + '，已扣賣出稅費。點一檔看每一批。</div>' +
+      rows.map((x, i) => {
+        const s = x.s;
+        const lots = s.lots.map(l => {
+          const lg = l.n * s.net, lr = l.n * (s.net - l.c);
+          return '<tr><td>' + (l.d ? l.d.slice(5).replace('-', '/') : '—') + '</td><td>' + l.n.toLocaleString() + '</td><td>' + l.c.toFixed(1) + '</td><td class="' + cls(lr) + '">' + signed(lr) + '</td><td class="' + cls(lr) + '">' + rt(lr, lg) + '</td></tr>';
+        }).join('');
+        return '<details><summary><span class="no">' + (i + 1) + '</span><span class="nm">' + s.name + ' <span style="font-weight:400;font-size:11px;color:var(--text-muted)">' + s.code + '</span>' +
+          (s.ld ? '<span class="ld-pill">跌停</span>' : '') +
+          '<small>全賣收回 ' + money(x.g) + '｜' + (x.r >= 0 ? '賺 ' : '虧 ') + money(Math.abs(x.r)) + (s.lots.length > 1 ? '｜分 ' + s.lots.length + ' 批，先賣的最早那批每$1' + rt(s.lots[0].n * (s.net - s.lots[0].c), s.lots[0].n * s.net) : '') + '</small></span>' +
+          '<span class="rt ' + cls(x.r) + '">' + rt(x.r, x.g) + '<small>每收回$1</small></span></summary>' +
+          '<table><tr><th>買進日(舊→新)</th><th>股數</th><th>每股成本</th><th>損益</th><th>每收回$1</th></tr>' + lots + '</table></details>';
+      }).join('');
+  }
+  $('wd-rank-btn').addEventListener('click', () => { rankOpen = !rankOpen; renderRank(); });
+
   function render() {
     const list = $('wd-list'); list.innerHTML = '';
     picked.forEach((p, i) => {
@@ -1044,7 +1093,7 @@
         const now = new Date();
         live = { time: j.time || (String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0')), n, from: '' };
         ok = true;
-        syncMode(); ranges(); if (mode === 'smart') autoAllocate(); render(); priceText();
+        syncMode(); ranges(); if (mode === 'smart') autoAllocate(); render(); priceText(); renderRank();
       }
     } catch (e) {}
     if (!ok) box.innerHTML = '⚠️ 抓不到即時價，維持原本價格，稍後再試。<br><span style="font-size:11px;color:var(--text-muted)">' + (window._wdDiag || ['（沒有詳細紀錄）']).join('<br>') + '</span>';
