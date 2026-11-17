@@ -990,21 +990,28 @@
     let ok = false;
     try {
       // 證交所偶爾會整批回空的(2026/11/17實測一次只回4檔)，沒抓到的隔2秒再補問，最多補2次
-      const q = {}; let jt = '';
+      const q = {}; let jt = ''; const diag = [];   // 每一次問的結果，失敗時秀出來方便查原因
       let want = stocks.map(s => s.code);
       for (let round = 0; round < 3 && want.length > 1; round++) {
         if (round) { box.textContent = '補抓沒抓到的 ' + want.length + ' 檔…'; await new Promise(r => setTimeout(r, 2000)); }
+        const t0 = Date.now(); let st = '';
         try {
           const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 30000);
           const r = await fetch(QUOTE_URL + '?codes=' + want.join(','), { signal: ctl.signal, cache: 'no-store' });
           clearTimeout(tm);
-          const j = await r.json();
+          st = 'HTTP ' + r.status;
+          const txt = await r.text();
+          const j = JSON.parse(txt);
           Object.assign(q, j.quotes || {});
           if (j.time && j.time > jt) jt = j.time;
-        } catch (e) {}
+          st += '，回 ' + Object.keys(j.quotes || {}).length + ' 檔' + (j.error ? '，' + j.error : '') + (j.errs && j.errs.length ? '，證交所：' + j.errs.join('／') : '') + (j.colo ? '，機房 ' + j.colo : '');
+        } catch (e) {
+          st += (st ? '，' : '') + (e.name === 'AbortError' ? '等超過30秒沒回應' : (e.name + '：' + e.message));
+        }
+        diag.push('第' + (round + 1) + '次 ' + ((Date.now() - t0) / 1000).toFixed(1) + '秒：' + st);
         want = want.filter(c => !q[c]);
       }
-      const j = { time: jt };
+      const j = { time: jt }; window._wdDiag = diag;
       const n = applyQuotes(q);
       if (n) {
         const now = new Date();
@@ -1013,9 +1020,9 @@
         ranges(); if (mode === 'smart') autoAllocate(); render(); priceText();
       }
     } catch (e) {}
-    if (!ok) box.textContent = '⚠️ 抓不到即時價（中繼站或證交所沒回應），維持原本價格，稍後再試。';
+    if (!ok) box.innerHTML = '⚠️ 抓不到即時價，維持原本價格，稍後再試。<br><span style="font-size:11px;color:var(--text-muted)">' + (window._wdDiag || ['（沒有詳細紀錄）']).join('<br>') + '</span>';
     // 證交所會擋短時間查太多次，10秒後才能再按
-    setTimeout(() => { btn.disabled = false; if (!ok) priceText(); }, 10000);
+    setTimeout(() => { btn.disabled = false; }, 10000);
   });
   // 智慧模式打開頁面就重挑(每天庫存/股價會變，不沿用上次存的股數)
   priceText(); syncMode(); fillSelect(); ranges(); if (mode === 'smart') autoAllocate(); render();
