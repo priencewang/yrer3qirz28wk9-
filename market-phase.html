@@ -59,7 +59,7 @@ details summary{cursor:pointer;color:var(--ink2);font-size:13px}
   <div class="chart-title">新台幣匯率（1美元換幾元台幣；往上＝台幣貶值、外資常在匯出）</div><svg id="c4"></svg>
   <div class="chart-title">美國VIX恐慌指數（越高越恐慌，20以下算平靜、30以上算恐慌）</div><svg id="c5"></svg>
   <div class="chart-title" id="t6">台指VIX（台指選擇權波動率指數，越高越恐慌）</div><svg id="c6"></svg>
-  <div style="font-size:11.5px;color:var(--ink3);margin-top:2px">K棒紅＝收盤比開盤高、綠＝收盤比開盤低。匯率、美國VIX來自Yahoo Finance（美國VIX是美股交易日，對到台股同一天或之前最近的一天）；台指VIX來自期交所，官網只留近3個月，所以從<span id="tvix-from"></span>起才有，之後每天累積；只有收盤值的日子畫成一小橫線。</div>
+  <div style="font-size:11.5px;color:var(--ink3);margin-top:2px">K棒紅＝收盤比開盤高、綠＝收盤比開盤低。匯率的開盤用前一天收盤（Yahoo外匯是24小時報價，原本的開盤跟收盤幾乎一樣，K棒會變成十字），所以實體＝當天比前一天漲跌多少。匯率、美國VIX來自Yahoo Finance（美國VIX是美股交易日，對到台股同一天或之前最近的一天）；台指VIX來自期交所，官網只留近3個月，所以從<span id="tvix-from"></span>起才有，之後每天累積；早期只有收盤值的日子，同樣用前一天收盤當開盤，畫成半透明、沒有上下影線的K棒。</div>
 </div>
 <div class="card">
   <div style="font-weight:700;margin-bottom:6px">段落時間表（連續3天以上，由新到舊）<span id="seg-sub" style="font-weight:400;font-size:12px;color:var(--muted,#888);margin-left:6px"></span></div>
@@ -223,7 +223,16 @@ function lineChart(svgId, rs, key, color, h, withBands, bars){
 function attachMacro(rs){
   const M = DATA.macro || {};
   [['fx','usdtwd',true],['vix','vix',true],['tvix','twvix',false]].forEach(([k, src, carry]) => {
-    const m = M[src] || {}, ks = Object.keys(m).sort(); let j = -1;
+    const m0 = M[src] || {}, ks = Object.keys(m0).sort(); let j = -1;
+    // 2026/11/21 RAY：匯率K棒看起來像十字(Yahoo外匯24小時報價，開盤≈收盤)→開盤改用前一天收盤，K棒實體＝當天漲跌；
+    // 台指VIX早期只有收盤值→也用前一天收盤當開盤畫成半透明K棒(est)，不再是灰色橫線
+    const m = {};
+    ks.forEach((d, n) => {
+      const v = m0[d], pc = n > 0 ? m0[ks[n-1]].c : null;
+      if (src === 'usdtwd' && pc != null) m[d] = {o: pc, h: Math.max(v.h, pc, v.c), l: Math.min(v.l, pc, v.c), c: v.c};
+      else if (v.o == null && pc != null) m[d] = {o: pc, h: Math.max(pc, v.c), l: Math.min(pc, v.c), c: v.c, est: true};
+      else m[d] = v;
+    });
     rs.forEach(r => {
       while (j + 1 < ks.length && ks[j+1] <= r.date) j++;
       const d = j >= 0 ? ks[j] : null;
@@ -258,15 +267,15 @@ function candleChart(svgId, rs, k, h, dec){
         g += `<text x="${x(i)}" y="${h-3}" font-size="10.5" fill="${css('--ink3')}" text-anchor="middle">${mm === 1 ? r.date.slice(2,4) + '年1月' : mm + '月'}</text>`; } } });
   rs.forEach((r, i) => { const v = r[k]; if (!v) return;
     if (v.o == null) { g += `<line x1="${x(i)-bw/2}" x2="${x(i)+bw/2}" y1="${y(v.c)}" y2="${y(v.c)}" stroke="${css('--ink3')}" stroke-width="2"/>`; return; }
-    const col = v.c >= v.o ? '#e34948' : '#1baf7a', t = y(Math.max(v.o, v.c)), b = y(Math.min(v.o, v.c));
-    g += `<line x1="${x(i)}" x2="${x(i)}" y1="${y(v.h)}" y2="${y(v.l)}" stroke="${col}" stroke-width="1"/>`;
-    g += `<rect x="${(x(i)-bw/2).toFixed(1)}" y="${t.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1, b-t).toFixed(1)}" fill="${col}"/>`; });
+    const col = v.c >= v.o ? '#e34948' : '#1baf7a', t = y(Math.max(v.o, v.c)), b = y(Math.min(v.o, v.c)), op = v.est ? ' opacity=".55"' : '';
+    if (!v.est) g += `<line x1="${x(i)}" x2="${x(i)}" y1="${y(v.h)}" y2="${y(v.l)}" stroke="${col}" stroke-width="1"/>`;
+    g += `<rect x="${(x(i)-bw/2).toFixed(1)}" y="${t.toFixed(1)}" width="${bw.toFixed(1)}" height="${Math.max(1.5, b-t).toFixed(1)}" fill="${col}"${op}/>`; });
   g += `<line class="xh" x1="0" x2="0" y1="${padT}" y2="${h-padB}" stroke="${css('--ink3')}" stroke-width="1" style="display:none"/>`;
   g += `<circle class="dot" r="3.5" fill="${css('--ink')}" stroke="${css('--card')}" stroke-width="2" style="display:none"/>`;
   svg.innerHTML = g;
   charts.push({svg, rs, key: k + 'C', x, y, padL, padR, W});
 }
-const ohlc = (v, dec) => !v ? '—' : v.o == null ? `收 ${fmt(v.c, dec)}` : `開 ${fmt(v.o, dec)} 高 ${fmt(v.h, dec)} 低 ${fmt(v.l, dec)} 收 <b>${fmt(v.c, dec)}</b>`;
+const ohlc = (v, dec) => !v ? '—' : (v.o == null || v.est) ? `收 ${fmt(v.c, dec)}` : `開 ${fmt(v.o, dec)} 高 ${fmt(v.h, dec)} 低 ${fmt(v.l, dec)} 收 <b>${fmt(v.c, dec)}</b>`;
 function hover(clientX, clientY){
   const tip = document.getElementById('tip');
   let r = null;
