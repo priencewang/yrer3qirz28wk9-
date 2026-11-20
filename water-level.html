@@ -483,7 +483,7 @@
   else if (DATA.cash_stale) warns.push(`⚠️ 現金是 ${DATA.cash_date} 查的，持股是 ${DATA.date} 的，兩個日期對不上，水位可能不準。`);
   if (DATA.stale) warns.push(`⚠️ ${DATA.broker_label}的持股資料日期跟永豐不同，數字可能不是同一天的。`);
   if (DATA.cash_ok && DATA.cash_note) warns.push(`⚠️ ${DATA.cash_note}`);
-  if (DATA.broker_label === '元大' || (DATA.balance_parts || []).length) warns.push('ℹ️ 元大的現金＝銀行可用餘額＋之後的交割款（規則比照永豐，還沒跟元大App核對過）。資金收回試算照先進先出逐批算（元大沒給買進日期的批次當最早那批，顯示「—」）；合併版兩家都有的股票照平均成本算。');
+  if (DATA.broker_label === '元大' || (DATA.balance_parts || []).length) warns.push('ℹ️ 元大的資金收回試算照先進先出逐批算（元大沒給買進日期的批次當最早那批，顯示「—」）；合併版兩家都有的股票照平均成本算。');
   if (warns.length) $('warn-wrap').innerHTML = warns.map(w => `<div class="warn">${w}</div>`).join('');
 
   // ---- 1. 儀表 ----
