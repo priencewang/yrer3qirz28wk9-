@@ -25,6 +25,7 @@ h1{font-size:20px;margin:4px 0 2px}
 .sub{color:var(--ink2);font-size:13px;margin-bottom:12px;line-height:1.6}
 .row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
 .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:6px 14px;font-size:13px;cursor:pointer;font-family:inherit}
+.seg-d{font-family:inherit;font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);color-scheme:light dark}
 .btn.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin:12px 0}
 .now{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
@@ -57,7 +58,11 @@ details summary{cursor:pointer;color:var(--ink2);font-size:13px}
   <div class="chart-title">融資餘額（億元）</div><svg id="c3"></svg>
 </div>
 <div class="card">
-  <div style="font-weight:700;margin-bottom:6px">段落時間表（連續3天以上，由新到舊）</div>
+  <div style="font-weight:700;margin-bottom:6px">段落時間表（連續3天以上，由新到舊）<span id="seg-sub" style="font-weight:400;font-size:12px;color:var(--muted,#888);margin-left:6px"></span></div>
+  <div id="seg-q" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:4px 0 8px;font-size:13px">
+    區間查詢 <input type="date" id="seg-from" class="seg-d"> ～ <input type="date" id="seg-to" class="seg-d">
+    <button class="btn" id="seg-go">查詢</button><button class="btn" id="seg-reset" style="display:none">回到最新20筆</button>
+  </div>
   <table><thead><tr><th>期間</th><th>判斷</th><th>天數</th><th>期間指數漲跌</th></tr></thead><tbody id="seg"></tbody></table>
 </div>
 <div class="card note">
@@ -125,13 +130,34 @@ function segments(rs){
   });
   return segs;
 }
-function segTable(rs){
-  const segs = segments(rs).filter(s => s.n >= 3).reverse();
+// 2026/11/21 RAY要求：平常只列最新20筆，其餘用區間查詢(查全部歷史裡跟區間有重疊的段落)
+let segQuery = null;
+function segTable(){
+  const all = segments(DATA.markets[market].filter(r => r.phase)).filter(s => s.n >= 3).reverse();
+  const $ = id => document.getElementById(id);
+  if (!$('seg-from').value) { $('seg-from').min = $('seg-to').min = all.length ? all[all.length-1].start.date : ''; $('seg-from').max = $('seg-to').max = all.length ? all[0].end.date : ''; }
+  let segs;
+  if (segQuery) {
+    let [a, b] = segQuery; if (a > b) [a, b] = [b, a];
+    segs = all.filter(s => s.end.date >= a && s.start.date <= b);
+    $('seg-sub').textContent = `${a.slice(2).replace(/-/g,'/')}～${b.slice(2).replace(/-/g,'/')} 共${segs.length}筆`;
+    $('seg-reset').style.display = '';
+  } else {
+    segs = all.slice(0, 20);
+    $('seg-sub').textContent = `最新${segs.length}筆，共${all.length}筆`;
+    $('seg-reset').style.display = 'none';
+  }
   document.getElementById('seg').innerHTML = segs.map(s => {
     const chg = (s.end.close / s.prevClose - 1) * 100;
     return `<tr><td>${s.start.date.slice(2).replace(/-/g,'/')}~${s.end.date.slice(5).replace(/-/g,'/')}</td><td><i class="sw" style="background:${pc(s.phase)}"></i> ${s.phase}</td><td>${s.n}</td><td>${chg>0?'+':''}${chg.toFixed(1)}%</td></tr>`;
   }).join('') || '<tr><td colspan="4">這段期間沒有連續3天以上的段落</td></tr>';
 }
+document.getElementById('seg-go').onclick = () => {
+  const a = document.getElementById('seg-from').value, b = document.getElementById('seg-to').value;
+  if (!a && !b) return;
+  segQuery = [a || b, b || a]; segTable();
+};
+document.getElementById('seg-reset').onclick = () => { segQuery = null; document.getElementById('seg-from').value = document.getElementById('seg-to').value = ''; segTable(); };
 
 const charts = [];
 function lineChart(svgId, rs, key, color, h, withBands, bars){
