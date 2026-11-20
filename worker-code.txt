@@ -44,7 +44,9 @@ export default {
         for (const m of j.msgArray || []) {
           if (!m.c) continue;   // 問錯市場(例如上市股問了otc)會回一筆空的，略過
           const num = v => { const x = parseFloat(v); return isFinite(x) && x > 0 ? x : null; };
-          const bid = num((m.b || '').split('_')[0]), ask = num((m.a || '').split('_')[0]);
+          // 委買賣價是「價1_價2_…」；跌停鎖死時委賣第一檔是0(市價單)、委買是「-」，所以取第一個大於0的價格(2026/11/20修：原本只看第一檔，跌停鎖死會退回昨收、頁面判斷不到跌停)
+          const first = s => { for (const v of (s || '').split('_')) { const x = num(v); if (x != null) return x; } return null; };
+          const bid = first(m.b), ask = first(m.a);
           let p = num(m.z), src = '成交';
           // 最近5秒沒有成交時z是「-」，改用最佳買賣價中間、再不行用昨收
           if (p == null && bid && ask) { p = Math.round((bid + ask) / 2 * 100) / 100; src = '買賣中價'; }
