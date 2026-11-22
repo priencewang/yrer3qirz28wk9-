@@ -137,9 +137,6 @@
   .line-table .note { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
   .pos { color: var(--gain); } .neg { color: var(--loss); } .muted { color: var(--text-muted); }
 
-  .shot-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary); }
-  .shot-row input { font-family: inherit; font-size: 15px; font-weight: 600; width: 120px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); color: var(--text-primary); }
-  .shot-result { margin-top: 10px; font-size: 14px; line-height: 1.7; }
 
   .stack { display: flex; height: 26px; border-radius: 6px; overflow: hidden; margin: 6px 0 10px; gap: 2px; }
   .stack div { height: 100%; }
@@ -157,10 +154,6 @@
   .bars .track { height: 10px; background: var(--surface-2); border-radius: 4px; overflow: hidden; }
   .bars .fill { height: 100%; border-radius: 4px; }
 
-  .stress { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .stress th { font-size: 11.5px; color: var(--text-secondary); font-weight: 600; text-align: right; padding: 6px 4px; border-bottom: 1px solid var(--gridline); }
-  .stress th:first-child, .stress td:first-child { text-align: left; }
-  .stress td { padding: 8px 4px; text-align: right; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
   .hist-wrap svg { width: 100%; height: auto; display: block; }
   .hist-empty { font-size: 13px; color: var(--text-secondary); line-height: 1.6; padding: 6px 0; }
@@ -243,7 +236,6 @@
   @media (max-width: 420px) {
     .kpi .val { font-size: 16px; }
     .order .big { font-size: 20px; }
-    .stress .hide-sm { display: none; }
   }
 </style>
 </head>
@@ -293,7 +285,7 @@
         <p>＝<b>當初買股票投入的錢</b> ÷（投入成本＋可用現金），不管股票後來漲跌。回答「<b>我準備的子彈已經打出去多少</b>」，適合看資金額度、紀律控管。</p>
         <h3>兩者什麼時候會差很多</h3>
         <p>股票大漲後：成本水位會<b>低估</b>你的風險（例：用一半的錢買股票、股票漲一倍，成本水位還是50%，市值水位已經67%）。股票大跌後：成本水位會<b>高估</b>你的風險，讓你以為還很滿。帳面損益不大時兩者幾乎一樣。</p>
-        <p class="muted" style="font-size:12px;">註：成本用永豐的「付出成本」，ETF配息後永豐會把成本往下調，所以會比真正掏出去的錢略少一點。第4、6、7區也會跟著切換；只有戰損推演固定用市值（推演的是股價下跌，成本不會跟著跌）。</p>
+        <p class="muted" style="font-size:12px;">註：成本用永豐的「付出成本」，ETF配息後永豐會把成本往下調，所以會比真正掏出去的錢略少一點。第4、5、6區也會跟著切換。</p>
       </div>
       <div class="gauge-wrap" id="gauge"></div>
       <div class="gauge-caption" id="gauge-caption"></div>
@@ -309,12 +301,6 @@
         <div class="tval" id="target-val"></div>
       </div>
       <div id="order-box"></div>
-      <div class="shot-row">
-        每次出手金額
-        <input type="number" id="shot-input" inputmode="numeric" min="1000" step="10000">
-        元
-      </div>
-      <div class="shot-result" id="shot-result"></div>
     </div>
 
     <div class="card">
@@ -332,32 +318,26 @@
     </div>
 
     <div class="card">
-      <h2>5 · 戰損推演</h2>
-      <p class="sub">假設股市整體下跌（槓桿ETF跌2倍、債券ETF不跌、現金不變），水位跟總資產會變怎樣，以及要回到目標水位需要買進多少。</p>
-      <table class="stress" id="stress"></table>
-    </div>
-
-    <div class="card">
-      <div class="h2-row"><h2>6 · 各產業佔總資產</h2><div class="basis-toggle mini"><button class="basis-btn" data-basis="value">市值</button><button class="basis-btn" data-basis="cost">成本</button></div></div>
+      <div class="h2-row"><h2>5 · 各產業佔總資產</h2><div class="basis-toggle mini"><button class="basis-btn" data-basis="value">市值</button><button class="basis-btn" data-basis="cost">成本</button></div></div>
       <p class="sub">分母含現金（市值水位用總資產、成本水位用投入成本＋現金），跟單日持股明細的圓餅圖（只算股票）不一樣，看的是「每一路兵力佔全軍多少」。</p>
       <div class="bars" id="ind-bars"></div>
     </div>
 
     <div class="card">
-      <div class="h2-row"><h2>7 · 前十大部位佔總資產</h2><div class="basis-toggle mini"><button class="basis-btn" data-basis="value">市值</button><button class="basis-btn" data-basis="cost">成本</button></div></div>
+      <div class="h2-row"><h2>6 · 前十大部位佔總資產</h2><div class="basis-toggle mini"><button class="basis-btn" data-basis="value">市值</button><button class="basis-btn" data-basis="cost">成本</button></div></div>
       <p class="sub">單一部位太重，那一檔出事就會傷到整體。</p>
       <div class="bars" id="top-bars"></div>
     </div>
 
     <div class="card">
-      <h2>8 · 水位歷史</h2>
+      <h2>7 · 水位歷史</h2>
       <p class="sub">每天15:30排程會記一筆，虛線是目前的目標水位。</p>
       <div class="hist-wrap" id="hist"></div>
     </div>
 
 
     <div class="card" id="wd-card">
-      <div class="h2-row"><h2>9 · 資金收回試算</h2></div>
+      <div class="h2-row"><h2>8 · 資金收回試算</h2></div>
       <p class="sub">設定想收回多少錢、最多能接受虧多少，再選要賣哪幾檔，下面會算出每檔賣幾股。每檔的拉桿也可以自己左右拖，總數會跟著變。選過的股票會記在這支手機上。</p>
       <div class="wd-field">
         <div class="lab">預計收回資金 <span><input class="wd-num" id="wd-cash-num" type="number" inputmode="numeric" step="1000" min="0"> 元</span></div>
@@ -444,7 +424,6 @@
   try { if (localStorage.getItem('wl_scope') === 'swing') scope = 'swing'; } catch (e) {}
   const tKey = () => 'wl_target_' + scope;
   let target = lsGet(tKey(), lsGet('wl_target', 70));
-  let shot = lsGet('wl_shot', 100000);
   // 市值水位/成本水位切換(2026/10/23新增)，記在各自手機
   let basis = 'value';
   try { if (localStorage.getItem('wl_basis') === 'cost') basis = 'cost'; } catch (e) {}
@@ -458,7 +437,7 @@
       lvName: (sw ? '波段' : '') + (cost ? '成本水位' : '市值水位'),
     };
   }
-  // 第4~7區、戰損推演一律市值；只看波段時只算波段個股
+  // 第4~6區一律市值；只看波段時只算波段個股
   const mktV = () => scope === 'swing' ? (DATA.swing_value || 0) : V;
   const mktA = () => C != null ? mktV() + C : null;
   const inScope = (h) => scope !== 'swing' || !h.long_term;
@@ -532,7 +511,7 @@
   }
 
   function renderOrder() {
-    if (!hasCash) { $('order-box').innerHTML = `<div class="order"><div class="desc">沒有現金資料，沒辦法計算。</div></div>`; $('shot-result').textContent = ''; return; }
+    if (!hasCash) { $('order-box').innerHTML = `<div class="order"><div class="desc">沒有現金資料，沒辦法計算。</div></div>`; return; }
     const { A, S: V } = cur();
     const goal = A * target / 100;
     const gap = goal - V;
@@ -549,19 +528,12 @@
     }
     $('order-box').innerHTML = html;
 
-    const room = Math.max(0, Math.min(gap, C));
-    if (gap <= 0) {
-      $('shot-result').innerHTML = `目前已經在目標之上，<b>這個目標下不建議再出手</b>。如果每次減碼 ${fmt(shot)}，大約要 ${Math.ceil(-gap / shot)} 次才回到目標。`;
-    } else {
-      const n = Math.floor(room / shot);
-      $('shot-result').innerHTML = `照目標還剩 ${fmt(room)} 額度，每次 ${fmt(shot)} 的話<b>可以出手 ${n} 次</b>${n ? `，最後會剩 ${fmt(room - n * shot)} 零頭` : ''}。<br><span class="muted">不管目標，現金全部打光的話最多 ${Math.floor(C / shot)} 次。</span>`;
-    }
   }
 
   function setTarget(v) {
     target = Math.max(0, Math.min(100, Math.round(v)));
     lsSet(tKey(), target);
-    renderPresets(); renderGauge(); renderOrder(); renderStress(); renderHistory();
+    renderPresets(); renderGauge(); renderOrder(); renderHistory();
   }
 
   // ---- 3. 現金明細 ----
@@ -610,23 +582,6 @@
       $('exposure-note').innerHTML = `一般水位 <b>${pct(DATA.water_level)}</b>，有效曝險 <b>${pct(DATA.effective_exposure)}</b>。` +
         (DATA.effective_exposure > DATA.water_level ? '槓桿ETF讓實際承受的漲跌比帳面水位大。' : '債券ETF讓實際承受的漲跌比帳面水位小。');
     }
-  }
-
-  // ---- 5. 戰損推演 ----
-  function renderStress() {
-    if (!hasCash) { $('stress').innerHTML = '<tr><td class="muted">沒有現金資料，沒辦法推演。</td></tr>'; return; }
-    const g = scope === 'swing' ? { '個股': DATA.swing_value || 0 } : (DATA.groups || {});
-    const A = mktA();
-    const drops = [0, 5, 10, 20, 30];
-    let h = `<tr><th>大盤</th><th>${scope === 'swing' ? '波段市值' : '股票市值'}</th><th class="hide-sm">${scope === 'swing' ? '波段兵力' : '總資產'}</th><th>水位</th><th>回到${target}%要買</th></tr>`;
-    drops.forEach(d => {
-      let v = 0;
-      Object.keys(g).forEach(k => { v += g[k] * Math.max(0, 1 - d / 100 * FACTOR[k]); });
-      const a = v + C, lvl = v / a * 100, need = a * target / 100 - v;
-      h += `<tr><td>${d === 0 ? '現在' : '跌' + d + '%'}</td><td>${fmt(v)}</td><td class="hide-sm">${fmt(a)}<br><span class="neg" style="font-size:11px">${d ? fmtS(a - A) : ''}</span></td><td><b>${pct(lvl)}</b></td>
-        <td class="${need > 0 ? 'pos' : 'neg'}">${need > 0 ? fmt(Math.min(need, C)) : '賣' + fmt(-need)}</td></tr>`;
-    });
-    $('stress').innerHTML = h;
   }
 
   // ---- 6/7. 長條 ----
@@ -696,14 +651,12 @@
   }
 
   $('target-slider').addEventListener('input', e => setTarget(Number(e.target.value)));
-  $('shot-input').value = shot;
-  $('shot-input').addEventListener('input', e => { const v = Number(e.target.value); if (v > 0) { shot = v; lsSet('wl_shot', shot); renderOrder(); } });
 
   $('footnote').innerHTML = `
     <p>• 股票市值用「付出成本＋損益試算」反推，是永豐含手續費、證交稅的口徑，跟單日持股明細的總市值一致。</p>
     <p>• 可用現金＝交割戶餘額＋T+1、T+2交割款。T日（今天）的交割款銀行已經處理過，不重複加。</p>
     <p>• 有效曝險只是參考：代碼結尾L的槓桿ETF算2倍，結尾B的債券ETF算0倍，其他都算1倍。</p>
-    <p>• 戰損推演假設所有股票一起照大盤同比例下跌，實際上個股跌幅會不一樣，只是讓你知道大概的承受力。</p>`;
+`;
 
   function renderBasis() {
     document.querySelectorAll('.basis-btn[data-basis]').forEach(b => b.classList.toggle('is-active', b.dataset.basis === basis));
@@ -724,7 +677,7 @@
     scope = b.dataset.scope;
     try { localStorage.setItem('wl_scope', scope); } catch (e) {}
     target = lsGet(tKey(), target);
-    renderScope(); renderBasis(); renderKpis(); renderPresets(); renderGauge(); renderOrder(); renderGroups(); renderStress(); renderBars(); renderHistory();
+    renderScope(); renderBasis(); renderKpis(); renderPresets(); renderGauge(); renderOrder(); renderGroups(); renderBars(); renderHistory();
   }));
   $('info-btn2').addEventListener('click', () => {
     const open = $('explain2').classList.toggle('open');
@@ -736,7 +689,7 @@
     $('info-btn').textContent = open ? '收起說明' : '？兩者差在哪';
   });
 
-  renderScope(); renderBasis(); renderKpis(); renderPresets(); renderGauge(); renderOrder(); renderCash(); renderGroups(); renderStress(); renderBars(); renderHistory();
+  renderScope(); renderBasis(); renderKpis(); renderPresets(); renderGauge(); renderOrder(); renderCash(); renderGroups(); renderBars(); renderHistory();
 })();
 </script>
 <script>
