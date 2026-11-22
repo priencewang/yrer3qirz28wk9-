@@ -178,7 +178,6 @@ function bar(v, lo, hi, tag, label){
   const vp = flip ? (buy ? `right:calc(${100 - z}% + 8px)` : `left:calc(${z}% + 8px)`) : valPos;
   return `<div class="bar" style="--e:${e};--g:${Math.round(r * 2)}px">${tag ? `<span class="tag">${tag}</span>` : ''}<div class="trk"></div>
     <div class="fill ${buy ? 'buy' : 'sell'}" style="left:${l}%;width:${w}%"></div>
-    ${v ? `<div class="bulb" style="left:calc(${p}% - 6px)"></div>` : ''}
     <div class="zero" style="left:calc(${z}% - 1px)"></div>
     <span class="val" style="${vp};color:${col}">${label}</span></div>`;
 }
