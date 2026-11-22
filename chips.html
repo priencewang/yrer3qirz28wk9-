@@ -68,10 +68,14 @@ h1{font-size:21px;margin:6px 0 2px}
 .bar .tag{position:absolute;left:-2px;top:0;font-size:10px;color:var(--ink3);transform:translateX(-100%);padding-right:4px;line-height:20px}
 .detail{grid-column:1/-1;margin:6px 0 4px;padding:10px;border-radius:12px;background:var(--track)}
 .detail .dt{font-size:12px;color:var(--ink2);margin-bottom:6px}
-.spark{display:grid;grid-template-columns:28px repeat(10,1fr);gap:3px;align-items:center;font-size:10.5px;color:var(--ink3)}
-.spark .cell{height:30px;position:relative}
-.spark .cell i{position:absolute;left:15%;right:15%;border-radius:3px}
-.spark .d{text-align:center}
+.spark{display:grid;grid-template-columns:44px 1fr 1fr;gap:4px 10px;align-items:center;font-size:11px;color:var(--ink3)}
+.spark .h{font-size:11px;color:var(--ink2);text-align:center;padding-bottom:2px;border-bottom:1px solid var(--line)}
+.spark .h:first-child{text-align:left}
+.spark .cell{height:20px;position:relative}
+.spark .cell .z{position:absolute;left:50%;top:2px;bottom:2px;width:1px;background:var(--ink3);opacity:.5}
+.spark .cell i{position:absolute;top:5px;height:10px;border-radius:3px}
+.spark .cell b{position:absolute;top:0;line-height:20px;font-size:11px;font-weight:700;white-space:nowrap}
+.spark .d{text-align:left;color:var(--ink2)}
 .empty{padding:24px 6px;text-align:center;color:var(--ink3)}
 .ai{border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;background:linear-gradient(180deg,var(--hl),transparent 70%)}
 .ai .rk{display:inline-flex;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--card);font-weight:800;align-items:center;justify-content:center;margin-right:8px}
@@ -183,11 +187,16 @@ function axisHtml(lo, hi, unit, lw){
   return `<div class="axis" style="--lw:${lw}"><div class="lab">${unit === '天' ? '<b>連續天數</b>' : '<b>單位：張</b><br><span style="font-size:9.5px">刻度開根號</span>'}</div><div class="scale"><div class="band" style="background:linear-gradient(90deg,${band})"></div>${ticks.map(t => `<span class="${t > 0 ? 'p' : t < 0 ? 'n' : ''}" style="left:${(tf(t) - tf(lo)) / (tf(hi) - tf(lo)) * 100}%">${t < 0 ? (unit === '天' ? '賣' : '−') : t > 0 && lo < 0 ? (unit === '天' ? '買' : '+') : ''}${fmtT(t)}</span>`).join('')}</div></div>`;
 }
 function detail(s){
-  const mx = Math.max(1, ...s.f10.map(Math.abs), ...s.t10.map(Math.abs));
-  const line = (arr, lab) => `<div>${lab}</div>` + arr.map(v => { const h = Math.abs(v) / mx * 50; return `<div class="cell"><i style="${v >= 0 ? 'bottom:50%' : 'top:50%'};height:${h}%;background:${v >= 0 ? 'var(--buy)' : 'var(--sell)'}"></i></div>`; }).join('');
+  // 外資、投信各用自己的最大值當刻度(投信量通常小很多，共用刻度會看不到)
+  const mf = Math.max(1, ...s.f10.map(Math.abs)), mt = Math.max(1, ...s.t10.map(Math.abs));
+  // 2026/11/22 RAY要求：日期改成由上往下排(最新在上)，每天一列，外資/投信各一條左右對稱的小橫條
+  const cell = (v, mx) => { const w = Math.abs(v) / mx * 50, c = v >= 0 ? 'var(--buy)' : 'var(--sell)';
+    return `<div class="cell"><span class="z"></span>${v ? `<i style="${v >= 0 ? 'left:50%' : 'right:50%'};width:${w}%;background:${c}"></i>` : ''}<b style="${v >= 0 ? 'right:calc(50% + 4px)' : 'left:calc(50% + 4px)'};color:${v ? c : 'var(--ink3)'}">${v ? sg(v) : '0'}</b></div>`; };
+  const rows = DATA.dates10.map((d, i) => [d, s.f10[i], s.t10[i]]).reverse()
+    .map(([d, f, t]) => `<div class="d">${md(d)}</div>${cell(f, mf)}${cell(t, mt)}`).join('');
   const sk = (n, cap) => n > 0 ? `連${dayTxt(n, cap)}買` : n < 0 ? `連${dayTxt(n, cap)}賣` : '今天沒買賣';
   return `<div class="detail"><div class="dt">近5日合計　外資 <b style="color:${s.f5 >= 0 ? 'var(--buy)' : 'var(--sell)'}">${sg(s.f5)}</b> 張（${sk(s.fs, s.fcap)}）｜投信 <b style="color:${s.t5 >= 0 ? 'var(--buy)' : 'var(--sell)'}">${sg(s.t5)}</b> 張（${sk(s.ts, s.tcap)}）</div>
-    <div class="spark">${line(s.f10, '外資')}${line(s.t10, '投信')}<div></div>${DATA.dates10.map(d => `<div class="d">${md(d)}</div>`).join('')}</div></div>`;
+    <div class="spark"><div class="h">日期</div><div class="h">外資</div><div class="h">投信</div>${rows}</div></div>`;
 }
 function rowHtml(s, inner){
   return `<div class="row" data-code="${s.code}"><div class="nm"><b>${s.name}</b><small>${s.code}${s.etf ? '・ETF' : ''}${s.src && s.src !== '持股' ? `<em class="src">${s.src === '長線標的' ? '長線' : '鎖股'}</em>` : ''}</small></div>${inner}${openCode === s.code ? detail(s) : ''}</div>`;
@@ -201,7 +210,7 @@ function renderPanel(scroll){
   if (c.subs) html += `<div class="subt">${c.subs.map(v => `<button data-v="${v}" class="${String(v) === String(sv) ? 'on' : ''}">${v === '10b' ? '連續10日↑（買／賣）' : '連買' + v + '日↑'}</button>`).join('')}</div>`;
   if (c.kind === 'ai') {
     const A = DATA.ai;
-    if (!A || !A.picks || !A.picks.length) html += `<div class="empty">AI還沒產出今天的分析（每天15:30後、晚上9:30補資料後各跑一次）。</div>`;
+    if (!A || !A.picks || !A.picks.length) html += `<div class="empty">AI還沒產出今天的分析（每天17:30抓完籌碼後跑一次）。</div>`;
     else {
       html += `<p style="color:var(--ink2);font-size:12.5px;margin:6px 0 0">${A.date === DATA.date ? '' : '⚠️ 這份是 ' + A.date + ' 的資料分析的，'}只根據外資、投信籌碼（今天、近5日、連續天數），不看新聞跟基本面，請當參考。${A.summary ? '<br>' + A.summary : ''}</p>`;
       A.picks.forEach((p, i) => {
