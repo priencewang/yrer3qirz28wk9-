@@ -107,7 +107,7 @@ h1{font-size:21px;margin:6px 0 2px}
 const DATA = JSON.parse(document.getElementById('chips-data').textContent);
 const $ = id => document.getElementById(id);
 const st = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } };
-let cat = st('chip_cat') || 'both_buy', withEtf = st('chip_etf') === '1', sub = {};
+let cat = ({f_10: 'f_streak'})[st('chip_cat')] || st('chip_cat') || 'both_buy', withEtf = st('chip_etf') === '1', sub = {};
 try { sub = JSON.parse(st('chip_sub') || '{}'); } catch (e) {}
 let openCode = null;
 const nf = v => { const a = Math.abs(v); return (a >= 100 ? Math.round(a).toLocaleString('zh-TW') : a.toLocaleString('zh-TW', {maximumFractionDigits: 1})); };
@@ -122,22 +122,20 @@ const CATS = [
   {id:'fight', no:3, t:'土洋對作', d:'外資跟投信方向相反（一個買、一個賣）。依兩者合計由高到低。', pick:s => s.f * s.t < 0, sort:s => s.f + s.t, kind:'pair'},
   {id:'trust', no:4, t:'投信買賣超', d:'只看投信，今天有買賣的股票，買超由高到低、賣超排在下面。', pick:s => s.t !== 0, sort:s => s.t, kind:'one', key:'t'},
   {id:'foreign', no:5, t:'外資買賣超', d:'只看外資（不含外資自營商），今天有買賣的股票，買超由高到低。', pick:s => s.f !== 0, sort:s => s.f, kind:'one', key:'f'},
-  {id:'f_streak', no:6, t:'外資連買', d:'外資連續買超的天數（今天也要是買超才算）。', kind:'streak', key:'fs', cap:'fcap', amt:'f', subs:[3,5,10]},
-  {id:'f_10', no:7, t:'外資連買賣10日↑', d:'外資連續買超或連續賣超達10個交易日以上，秀出實際天數。', kind:'streak10', key:'fs', cap:'fcap', amt:'f'},
-  {id:'t_streak', no:8, t:'投信連買＋連買賣10日↑', d:'投信連續買超天數；最後一個按鈕是連續買或賣10日以上（秀天數）。', kind:'streak', key:'ts', cap:'tcap', amt:'t', subs:[3,5,10,'10b']},
-  {id:'ai', no:9, t:'AI 籌碼前五名', d:'', kind:'ai'},
+  // 2026/11/22 RAY同意整合：原本6外資連買、7外資連續10日↑、8投信連買/10日↑ → 外資、投信各一格，連買連賣畫在一起
+  {id:'f_streak', no:6, t:'外資連續買賣', d:'外資連續買超（紅、往右）或連續賣超（綠、往左）的天數，今天也要同方向才算。連買最久的在最上面、連賣最久的在最下面。', kind:'streak', key:'fs', cap:'fcap', amt:'f', subs:[3,5,10]},
+  {id:'t_streak', no:7, t:'投信連續買賣', d:'投信連續買超（紅、往右）或連續賣超（綠、往左）的天數，今天也要同方向才算。連買最久的在最上面、連賣最久的在最下面。', kind:'streak', key:'ts', cap:'tcap', amt:'t', subs:[3,5,10]},
+  {id:'ai', no:8, t:'AI 籌碼前五名', d:'', kind:'ai'},
 ];
 const pool = () => DATA.stocks.filter(s => withEtf || !s.etf);
 function members(c, sv){
   const P = pool();
   if (c.kind === 'pair' || c.kind === 'one') return P.filter(c.pick).sort((a, b) => c.sort(b) - c.sort(a));
-  if (c.kind === 'streak10' || (c.kind === 'streak' && sv === '10b'))
-    return P.filter(s => Math.abs(s[c.key]) >= 10).sort((a, b) => b[c.key] - a[c.key] || b[c.amt] - a[c.amt]);
-  if (c.kind === 'streak') return P.filter(s => s[c.key] >= (sv || 3)).sort((a, b) => b[c.key] - a[c.key] || b[c.amt] - a[c.amt]);
+  if (c.kind === 'streak') return P.filter(s => Math.abs(s[c.key]) >= (sv || 3)).sort((a, b) => b[c.key] - a[c.key] || b[c.amt] - a[c.amt]);
   if (c.kind === 'ai') return (DATA.ai && DATA.ai.picks || []).map(p => DATA.stocks.find(s => s.code === p.code)).filter(Boolean);
   return [];
 }
-const subOf = c => c.subs ? (sub[c.id] ?? c.subs[0]) : null;
+const subOf = c => c.subs ? (c.subs.includes(sub[c.id]) ? sub[c.id] : c.subs[0]) : null;
 
 function niceMax(v){ if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p; return 10 * p; }
 
@@ -152,8 +150,13 @@ function renderGrid(){
       const b = ms.filter(s => s[c.key] > 0).length;
       if (n) mini = `<span class="mini"><i style="width:${b/n*100}%;background:var(--buy)"></i><i style="flex:1;background:var(--sell)"></i></span>`;
     }
-    const unit = c.kind === 'ai' ? '檔' : '檔';
-    return `<button class="tile${c.id === cat ? ' on' : ''}" data-id="${c.id}">${mini}<div class="no">${c.no}</div><div class="ttl">${c.t}</div><div class="cnt">${n}<small>${unit}</small></div></button>`;
+    let cnt = `${n}<small>檔</small>`;
+    if (c.kind === 'streak') {
+      const b = ms.filter(s => s[c.key] > 0).length, x = n - b;
+      if (n) mini = `<span class="mini"><i style="width:${b/n*100}%;background:var(--buy)"></i><i style="flex:1;background:var(--sell)"></i></span>`;
+      cnt = `<span style="color:var(--buy)">買${b}</span><small>／</small><span style="color:var(--sell)">賣${x}</span>`;
+    }
+    return `<button class="tile${c.id === cat ? ' on' : ''}" data-id="${c.id}">${mini}<div class="no">${c.no}</div><div class="ttl">${c.t}</div><div class="cnt">${cnt}</div></button>`;
   }).join('');
   $('grid').querySelectorAll('.tile').forEach(b => b.onclick = () => { cat = b.dataset.id; st('chip_cat', cat); openCode = null; renderGrid(); renderPanel(true); });
 }
@@ -207,7 +210,7 @@ function renderPanel(scroll){
   SQ = c.kind === 'pair' || c.kind === 'one';
   $('panel').style.setProperty('--lw', lw);
   let html = `<div class="ph"><h2>${c.no}．${c.t}</h2><p>${c.d}</p></div>`;
-  if (c.subs) html += `<div class="subt">${c.subs.map(v => `<button data-v="${v}" class="${String(v) === String(sv) ? 'on' : ''}">${v === '10b' ? '連續10日↑（買／賣）' : '連買' + v + '日↑'}</button>`).join('')}</div>`;
+  if (c.subs) html += `<div class="subt">${c.subs.map(v => `<button data-v="${v}" class="${String(v) === String(sv) ? 'on' : ''}">${'連續' + v + '日↑'}</button>`).join('')}</div>`;
   if (c.kind === 'ai') {
     const A = DATA.ai;
     if (!A || !A.picks || !A.picks.length) html += `<div class="empty">AI還沒產出今天的分析（每天17:30抓完籌碼後跑一次）。</div>`;
@@ -228,11 +231,10 @@ function renderPanel(scroll){
     const m = niceMax(Math.max(...ms.map(s => Math.abs(s[c.key]))));
     html += axisHtml(-m, m, '張', lw) + ms.map(s => rowHtml(s, `<div class="bars">${bar(s[c.key], -m, m, '', sg(s[c.key]))}</div>`)).join('');
   } else {
-    const two = c.kind === 'streak10' || sv === '10b';
     const m = niceMax(Math.max(10, ...ms.map(s => Math.abs(s[c.key]))));
-    html += axisHtml(two ? -m : 0, m, '天', lw) + ms.map(s => {
+    html += axisHtml(-m, m, '天', lw) + ms.map(s => {
       const n = s[c.key], lab = `連${dayTxt(n, s[c.cap])}${n > 0 ? '買' : '賣'}・今天${sg(s[c.amt])}張`;
-      return rowHtml(s, `<div class="bars">${bar(n, two ? -m : 0, m, '', lab)}</div>`);
+      return rowHtml(s, `<div class="bars">${bar(n, -m, m, '', lab)}</div>`);
     }).join('');
   }
   $('panel').innerHTML = html;
@@ -243,7 +245,7 @@ function renderPanel(scroll){
 $('etf-tg').querySelectorAll('button').forEach(b => { b.classList.toggle('on', (b.dataset.v === '1') === withEtf);
   b.onclick = () => { withEtf = b.dataset.v === '1'; st('chip_etf', withEtf ? '1' : '0'); $('etf-tg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); renderGrid(); renderPanel(); }; });
 $('sub').innerHTML = `籌碼日期 <b>${DATA.date}</b>（三大法人日報）｜持股 ${DATA.stocks.filter(s => (s.src || '持股') === '持股').length} 檔（永豐＋元大）＋長線標的/鎖股觀察 ${DATA.stocks.filter(s => s.src && s.src !== '持股').length} 檔｜只看外資（不含外資自營商）跟投信`;
-$('note').innerHTML = `• 資料來源：證交所「三大法人買賣超日報」、櫃買中心「三大法人買賣明細」，每天約下午3點多公布（上櫃較晚），15:30排程抓一次、晚上9:30再補一次。更新時間 ${DATA.updated}。<br>
+$('note').innerHTML = `• 資料來源：證交所「三大法人買賣超日報」、櫃買中心「三大法人買賣明細」，最晚傍晚6點前公布完，每天17:30排程抓一次（還沒齊會每10分鐘重抓，到18:30左右）。更新時間 ${DATA.updated}。<br>
   • 連續天數最多往回算 ${DATA.days} 個交易日，碰到上限的會顯示「≥」。今天沒有買賣（0張）就算中斷。<br>
   • 1張＝1,000股；零股成交的ETF可能顯示小數。`;
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => renderPanel(), 200); });
