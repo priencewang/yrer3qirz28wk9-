@@ -63,7 +63,7 @@ h1{font-size:21px;margin:6px 0 2px}
 .bar .fill{position:absolute;top:4px;height:12px;border-radius:999px;transition:width .5s cubic-bezier(.2,.8,.2,1),left .5s cubic-bezier(.2,.8,.2,1)}
 .bar .fill.buy{background:linear-gradient(90deg,var(--buyL),var(--e))}
 .bar .fill.sell{background:linear-gradient(270deg,var(--sellL),var(--e))}
-.bar .bulb{position:absolute;top:1px;width:18px;height:18px;border-radius:50%;border:2px solid var(--card);background:var(--e);box-shadow:0 0 0 calc(1px + var(--g)) color-mix(in srgb,var(--e) 30%,transparent)}
+.bar .bulb{position:absolute;top:4px;width:12px;height:12px;border-radius:50%;border:1.5px solid var(--card);background:var(--e);box-shadow:0 0 0 var(--g) color-mix(in srgb,var(--e) 35%,transparent)}
 .bar .val{position:absolute;top:0;font-size:12.5px;font-weight:800;white-space:nowrap;line-height:20px}
 .bar .tag{position:absolute;left:-2px;top:0;font-size:10px;color:var(--ink3);transform:translateX(-100%);padding-right:4px;line-height:20px}
 .detail{grid-column:1/-1;margin:6px 0 4px;padding:10px;border-radius:12px;background:var(--track)}
@@ -169,9 +169,9 @@ function bar(v, lo, hi, tag, label){
   const flip = buy ? p > 78 : p < 22;   // 太靠邊就把數字放進條裡面那側
   // 太靠邊放不下：數字改放到0線的另一側
   const vp = flip ? (buy ? `right:calc(${100 - z}% + 8px)` : `left:calc(${z}% + 8px)`) : valPos;
-  return `<div class="bar" style="--e:${e};--g:${Math.round(r * 4)}px">${tag ? `<span class="tag">${tag}</span>` : ''}<div class="trk"></div>
+  return `<div class="bar" style="--e:${e};--g:${Math.round(r * 2)}px">${tag ? `<span class="tag">${tag}</span>` : ''}<div class="trk"></div>
     <div class="fill ${buy ? 'buy' : 'sell'}" style="left:${l}%;width:${w}%"></div>
-    ${v ? `<div class="bulb" style="left:calc(${p}% - 9px)"></div>` : ''}
+    ${v ? `<div class="bulb" style="left:calc(${p}% - 6px)"></div>` : ''}
     <div class="zero" style="left:calc(${z}% - 1px)"></div>
     <span class="val" style="${vp};color:${col}">${label}</span></div>`;
 }
