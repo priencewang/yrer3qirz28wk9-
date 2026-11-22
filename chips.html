@@ -123,8 +123,8 @@ const CATS = [
   {id:'trust', no:4, t:'投信買賣超', d:'只看投信，今天有買賣的股票，買超由高到低、賣超排在下面。', pick:s => s.t !== 0, sort:s => s.t, kind:'one', key:'t'},
   {id:'foreign', no:5, t:'外資買賣超', d:'只看外資（不含外資自營商），今天有買賣的股票，買超由高到低。', pick:s => s.f !== 0, sort:s => s.f, kind:'one', key:'f'},
   {id:'f_streak', no:6, t:'外資連買', d:'外資連續買超的天數（今天也要是買超才算）。', kind:'streak', key:'fs', cap:'fcap', amt:'f', subs:[3,5,10]},
-  {id:'f_10', no:7, t:'外資連續10日↑', d:'外資連續買超或連續賣超達10個交易日以上，秀出實際天數。', kind:'streak10', key:'fs', cap:'fcap', amt:'f'},
-  {id:'t_streak', no:8, t:'投信連買／10日↑', d:'投信連續買超天數；最後一個按鈕是連續買或賣10日以上（秀天數）。', kind:'streak', key:'ts', cap:'tcap', amt:'t', subs:[3,5,10,'10b']},
+  {id:'f_10', no:7, t:'外資連買賣10日↑', d:'外資連續買超或連續賣超達10個交易日以上，秀出實際天數。', kind:'streak10', key:'fs', cap:'fcap', amt:'f'},
+  {id:'t_streak', no:8, t:'投信連買＋連買賣10日↑', d:'投信連續買超天數；最後一個按鈕是連續買或賣10日以上（秀天數）。', kind:'streak', key:'ts', cap:'tcap', amt:'t', subs:[3,5,10,'10b']},
   {id:'ai', no:9, t:'AI 籌碼前五名', d:'', kind:'ai'},
 ];
 const pool = () => DATA.stocks.filter(s => withEtf || !s.etf);
