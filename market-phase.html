@@ -42,6 +42,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{padding:6px 6px;white-space:nowrap;border-bottom:1px solid var(--line);text-align:left}
 th{color:var(--ink2);font-weight:600}
 .note{color:var(--ink2);font-size:12.5px;line-height:1.7}
+svg{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 details summary{cursor:pointer;color:var(--ink2);font-size:13px}
 </style></head><body>
 <div class="wrap">
@@ -56,8 +57,8 @@ details summary{cursor:pointer;color:var(--ink2);font-size:13px}
   <div class="chart-title" id="t1"></div><svg id="c1"></svg>
   <div class="chart-title">成交金額（每天，億元；實心＝爆大量／爆巨量）</div><svg id="c2"></svg>
   <div class="chart-title">融資餘額（億元）</div><svg id="c3"></svg>
-  <div class="chart-title">融資維持率（%）<span style="font-weight:400;font-size:11.5px"><i style="display:inline-block;width:14px;height:3px;background:#2a78d6;vertical-align:middle;margin:0 3px 0 8px"></i>上市融資維持率（估算）<i style="display:inline-block;width:14px;height:3px;background:#e0892f;vertical-align:middle;margin:0 3px 0 8px"></i>官方全市場擔保維持率</span></div><svg id="c3b"></svg>
-  <div style="font-size:11.5px;color:var(--ink3);margin:-2px 0 8px;line-height:1.6">紅虛線140%：上市融資維持率跌到這附近，常是散戶被斷頭、殺到底的訊號（落底參考）；130%是追繳線。藍線＝每檔融資餘額×當天收盤價加總÷融資金額（媒體說的「大盤融資維持率」就是這種，只算上市，從<span id="mr-from"></span>起有）；橘線＝證交所臺股儀表板公布的「全市場擔保維持率」（融資＋融券整戶合併算，所以比藍線高，2026/8/25起才有資料）。兩條都是晚上9點多才有當天的，最新一天可能還沒出來。</div>
+  <div class="chart-title">融資維持率（%）<span style="font-weight:400;font-size:11.5px"><i style="display:inline-block;width:14px;height:3px;background:#2a78d6;vertical-align:middle;margin:0 3px 0 8px"></i>上市融資維持率<i style="display:inline-block;width:14px;height:3px;background:#e0892f;vertical-align:middle;margin:0 3px 0 8px"></i>證交所 整戶擔保維持率</span></div><svg id="c3b"></svg>
+  <div style="font-size:11.5px;color:var(--ink3);margin:-2px 0 8px;line-height:1.6">紅虛線140%：上市融資維持率跌到這附近，常是散戶被斷頭、殺到底的訊號（落底參考）；130%是追繳線。藍線＝媒體常說的「大盤融資維持率」（140%就是講這條）：證交所沒有直接公布這個數字，是用證交所公布的每檔融資餘額×當天收盤價加總÷融資金額算出來的，跟媒體算法一樣（11/20算出140.39%，媒體報140.4%），只算上市，從<span id="mr-from"></span>起有；橘線＝證交所臺股儀表板公布的「整戶擔保維持率」（融資＋融券、整個帳戶合併算，所以比藍線高，2026/8/25起才有資料）。兩條都是晚上9點多才有當天的，最新一天可能還沒出來。</div>
   <div class="chart-title">新台幣匯率（1美元換幾元台幣；往上＝台幣貶值、外資常在匯出）</div><svg id="c4"></svg>
   <div class="chart-title">美國VIX恐慌指數（越高越恐慌，20以下算平靜、30以上算恐慌）</div><svg id="c5"></svg>
   <div class="chart-title" id="t6">台指VIX（台指選擇權波動率指數，越高越恐慌）</div><svg id="c6"></svg>
@@ -133,7 +134,7 @@ function mrChip(){
   const M = DATA.mratio || {}, ks = Object.keys(M).filter(k => M[k].est != null).sort(), k = ks[ks.length - 1];
   if (!k) return '';
   const v = M[k].est, o = M[k].official;
-  return `<span class="chip"${v <= 140 ? ' style="color:#e34948;font-weight:700"' : ''}>上市融資維持率(估) ${v.toFixed(2)}%（${+k.slice(5,7)}/${+k.slice(8,10)}${o != null ? '，官方全市場 ' + o.toFixed(2) + '%' : ''}）${v <= 140 ? '⚠️ 到140%落底區' : ''}</span>`;
+  return `<span class="chip"${v <= 140 ? ' style="color:#e34948;font-weight:700"' : ''}>上市融資維持率 ${v.toFixed(2)}%（${+k.slice(5,7)}/${+k.slice(8,10)}${o != null ? '，證交所整戶擔保 ' + o.toFixed(2) + '%' : ''}）${v <= 140 ? '⚠️ 到140%落底區' : ''}</span>`;
 }
 function segments(rs){
   const segs = [];
@@ -339,7 +340,7 @@ function hover(clientX, clientY){
     量：${r.vol_state}（成交 ${fmt(r.amount)}億，5日均÷60日均 ${r.vol_ratio}倍）<br>
     資：${r.margin_change || '—'}／${r.margin_level || '—'}（融資÷指數 比近2年 ${r.margin_ratio_pct ?? '—'}% 的日子高）<br>
     融資餘額${mdate(r)} ${fmt(r.margin, 1)}億，較前一天 ${d1(r.margin_d1)}<br>
-    融資維持率：上市(估) <b>${r.mr != null ? r.mr.toFixed(2) + '%' : '—'}</b>｜官方全市場 ${r.mro != null ? r.mro.toFixed(2) + '%' : '—'}${r.mrc ? `（追繳 ${r.mrc.toLocaleString()} 戶、${r.mra}億）` : ''}<br>
+    上市融資維持率 <b>${r.mr != null ? r.mr.toFixed(2) + '%' : '—'}</b>｜證交所整戶擔保 ${r.mro != null ? r.mro.toFixed(2) + '%' : '—'}${r.mrc ? `（追繳 ${r.mrc.toLocaleString()} 戶、${r.mra}億）` : ''}<br>
     匯率 ${ohlc(r.fx, 3)}<br>美國VIX ${ohlc(r.vix, 2)}<br>台指VIX ${ohlc(r.tvix, 2)}`;
   tip.style.display = 'block';
   const tw = tip.offsetWidth, th = tip.offsetHeight;
@@ -369,11 +370,13 @@ function render(){
   candleChart('c6', rs, 'tvix', 140, 0);
   segTable(rs);
   charts.forEach(c => {
-    c.svg.onpointermove = e => hover(e.clientX, e.clientY);
+    // 2026/11/25 RAY：手機要按住才看得到不方便 → 手指點一下就固定顯示，點圖表以外的地方才收起；滑鼠照舊移過去就顯示
+    c.svg.onpointermove = e => { if (e.pointerType === 'mouse') hover(e.clientX, e.clientY); };
     c.svg.onpointerdown = e => hover(e.clientX, e.clientY);
-    c.svg.onpointerleave = hideHover;
+    c.svg.onpointerleave = e => { if (e.pointerType === 'mouse') hideHover(); };
   });
 }
+document.addEventListener('pointerdown', e => { if (!e.target.closest('svg')) hideHover(); });
 window.addEventListener('resize', render);
 render();
 </script></body></html>
