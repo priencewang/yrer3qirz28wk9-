@@ -167,7 +167,7 @@ const CATS = [
   // 2026/11/23 分點進出：RAY手動下載官網券商買賣日報表CSV(有驗證碼不能自動抓)，import_branch_csv.py 匯入
   {id:'branch', no:12, t:'分點進出', d:'你手動匯入的「券商買賣日報表」。每檔畫最新一天：買超前5大分點合計（紅）、賣超前5大分點合計（綠），點開看是哪幾家分點。', kind:'branch'},
   // 2026/11/24 三大法人只佔成交一半，補散戶(融資)動向：法人賣、融資增＝籌碼從法人流到散戶(危險)；法人買、融資減＝籌碼集中到法人手上
-  {id:'retail', no:13, t:'散戶動向', d:'每檔兩條：「法人」＝外資＋投信買賣超張數、「融資」＝融資增減張數（這格一律用張數；上方切「金額」時，點開股票的逐日表是金額，例如外資買239張×約160元＝3,817萬）。上面「法人賣、散戶接」＝外資＋投信今天賣超、融資卻增加（散戶借錢接手，比較危險），依融資增加最多排；下面「籌碼集中」＝外資＋投信買超、融資減少（籌碼往法人集中），依融資減少最多排。', kind:'retail', mt:'散戶動向', md:'「法人賣、散戶接」（外資＋投信賣超、融資增加）跟「籌碼集中」（外資＋投信買超、融資減少）各5檔，依融資增減張數排。', gb:'法人賣、散戶接', gs:'籌碼集中'},
+  {id:'retail', no:13, t:'散戶動向', d:'每檔兩條：「法人」＝外資＋投信買賣超張數、「融資」＝融資增減張數（這格一律用張數；上方切「金額」時，點開股票的逐日表是金額，例如外資買239張×約160元＝3,817萬）。上面「籌碼集中」＝外資＋投信買超、融資減少（籌碼往法人集中），依融資減少最多排；下面「法人賣、散戶接」＝外資＋投信今天賣超、融資卻增加（散戶借錢接手，比較危險），依融資增加最多排。', kind:'retail', mt:'散戶動向', md:'「法人賣、散戶接」（外資＋投信賣超、融資增加）跟「籌碼集中」（外資＋投信買超、融資減少）各5檔，依融資增減張數排。', gb:'法人賣、散戶接', gs:'籌碼集中'},
   // 2026/11/24 八大公股行庫：官方沒有這個統計，是媒體把官股券商分點加總整理的；chip_bank8_news.py 每天讓AI上網搜新聞整理
   {id:'bank8', no:14, t:'八大行庫', d:'八大公股行庫（官股券商）今天買超、賣超的股票，資料是AI每天晚上上網搜財經新聞整理的（官方沒有公布這個統計），數字以新聞原文為準。', kind:'bank8', mt:'八大行庫', md:'八大公股行庫今天買超、賣超的股票（AI搜新聞整理）。'},
 ];
@@ -219,7 +219,7 @@ function renderGrid(){
     if (c.kind === 'bank8') { const T = members(c);
       return `<button class="tile${c.id === cat ? ' on' : ''}" data-id="${c.id}"><div class="no">${c.no}</div><div class="ttl">${c.t}</div><div class="cnt">${B8 ? (B8.total != null ? `<span style="color:${B8.total >= 0 ? 'var(--buy)' : 'var(--sell)'}">${B8.total >= 0 ? '+' : '−'}${Math.abs(B8.total)}<small>億</small></span>` : `<span style="color:var(--buy)">買${T.b.length}</span><small>／</small><span style="color:var(--sell)">賣${T.s.length}</span>`) : '<small>還沒有</small>'}</div></button>`; }
     if (c.kind === 'retail') { const T = members(c);
-      return `<button class="tile${c.id === cat ? ' on' : ''}" data-id="${c.id}"><div class="no">${c.no}</div><div class="ttl">${c.t}</div><div class="cnt"><span style="color:var(--sell)">散${T.b.length}</span><small>／</small><span style="color:var(--buy)">集${T.s.length}</span></div></button>`; }
+      return `<button class="tile${c.id === cat ? ' on' : ''}" data-id="${c.id}"><div class="no">${c.no}</div><div class="ttl">${c.t}</div><div class="cnt"><span style="color:var(--buy)">集${T.s.length}</span><small>／</small><span style="color:var(--sell)">散${T.b.length}</span></div></button>`; }
     if (scope === 'mkt') {
       const T = getTop(c);
       if (c.id === 'big') return `<button class="tile${c.id === cat ? ' on' : ''}" data-id="${c.id}"><div class="no">${c.no}</div><div class="ttl">${c.mt}</div><div class="cnt"><span style="color:var(--buy)">外${T.b.length}</span><small>／</small><span style="color:var(--buy)">投${T.s.length}</span></div></button>`;
@@ -373,7 +373,7 @@ function renderPanel(scroll){
   } else if ((mkt || c.kind === 'retail') ? !(ms.b.length + ms.s.length) : !ms.length) html += `<div class="empty">${c.kind === 'retail' && !ED.margin ? '還沒有融資資料。' : '今天沒有符合的股票。'}</div>`;
   else {
     // 全市場模式分兩段(買在上、賣在下)，共用一把刻度尺
-    const groups = c.kind === 'retail' ? [[c.gb, 's', ms.b], [c.gs, 'b', ms.s]] : mkt ? [[c.gb, 'b', ms.b], [c.gs, c.kind === 'big' ? 'b' : 's', ms.s]] : [[null, '', ms]];
+    const groups = c.kind === 'retail' ? [[c.gs, 'b', ms.s], [c.gb, 's', ms.b]] : mkt ? [[c.gb, 'b', ms.b], [c.gs, c.kind === 'big' ? 'b' : 's', ms.s]] : [[null, '', ms]];
     const all = groups.flatMap(g => g[2]);
     let m, ax;
     if (c.kind === 'pair') { m = niceMax(Math.max(...all.flatMap(s => [Math.abs(V(s,'f')), Math.abs(V(s,'t'))]))); ax = axisHtml(-m, m, '張', lw); }
