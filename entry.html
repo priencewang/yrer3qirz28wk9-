@@ -139,7 +139,14 @@
   #tab-cards:checked ~ .tab-bar label[for="tab-cards"],
   #tab-table:checked ~ .tab-bar label[for="tab-table"],
   #tab-filters:checked ~ .tab-bar label[for="tab-filters"],
-  #tab-watchlist:checked ~ .tab-bar label[for="tab-watchlist"] { background: var(--navy); color: #fff; }
+  #tab-watchlist:checked ~ .tab-bar label[for="tab-watchlist"],
+  #tab-chips:checked ~ .tab-bar label[for="tab-chips"] { background: var(--navy); color: #fff; }
+  #tab-chips:checked ~ #panel-chips { display: block; }
+  /* 2026/11/27 第5個分頁「籌碼集中」：嵌入網站 chips.html?view=focus(跟持股籌碼頁同一套畫法)，
+     5顆按鈕手機上較擠，字縮小一點 */
+  .tab-bar { gap: 4px; }
+  .tab-bar .tab-btn { font-size: 12px; padding: 10px 1px; white-space: nowrap; letter-spacing: -0.3px; }
+  #chips-frame { width: 100%; border: 0; height: 2400px; display: block; background: transparent; }
   #tab-cards:checked ~ #panel-cards { display: block; }
   #tab-table:checked ~ #panel-table { display: block; }
   #tab-filters:checked ~ #panel-filters { display: block; }
@@ -187,17 +194,19 @@
 </head>
 <body>
 <h1>入場出場速覽</h1>
-<div class="subtitle">資料來源: 進場訊號快篩_20261126_1318.xlsx　產出時間: 2026-11-27 00:45</div>
+<div class="subtitle">資料來源: 進場訊號快篩_20261126_1318.xlsx　產出時間: 2026-11-27 01:01</div>
 
 <input type="radio" name="tabs" id="tab-cards" class="tab-input" checked>
 <input type="radio" name="tabs" id="tab-table" class="tab-input">
 <input type="radio" name="tabs" id="tab-filters" class="tab-input">
 <input type="radio" name="tabs" id="tab-watchlist" class="tab-input">
+<input type="radio" name="tabs" id="tab-chips" class="tab-input">
 <div class="tab-bar">
   <label for="tab-cards" class="tab-btn">重點卡片</label>
   <label for="tab-table" class="tab-btn">入場區表格</label>
   <label for="tab-filters" class="tab-btn">入場區篩選</label>
   <label for="tab-watchlist" class="tab-btn">長線區表格</label>
+  <label for="tab-chips" class="tab-btn">籌碼集中</label>
 </div>
 <div class="tab-panel" id="panel-cards">
 <div class="section-title">🟥 獲利區（1檔）</div>
@@ -713,7 +722,7 @@
 })();
 </script>
 <div class="empty" style="padding:10px 0 4px;text-align:left">只列我的庫存個股（不含ETF、台積電、2股以下零碎股）</div>
-<div class="empty" style="padding:2px 0 4px;text-align:left">股數/成本/損益：永豐即時庫存（00:45查詢，含今天盤中買賣，損益含手續費與證交稅）</div>
+<div class="empty" style="padding:2px 0 4px;text-align:left">股數/成本/損益：永豐即時庫存（01:01查詢，含今天盤中買賣，損益含手續費與證交稅）</div>
 </div>
 <div class="tab-panel" id="panel-table">
 
@@ -1422,11 +1431,21 @@
 </div>
 
 </div>
+<div class="tab-panel" id="panel-chips">
+<!-- 2026/11/27 RAY要求：持股籌碼14格裡挑1/4/5/6/7/8/9/10/11/13的前幾名。內容在網站chips.html(17:30更新)，
+     這裡用iframe嵌入，高度由chips頁回報(postMessage)自動調整 -->
+<iframe id="chips-frame" src="https://priencewang.github.io/yrer3qirz28wk9-/chips.html?view=focus" title="籌碼集中"></iframe>
+<script>
+window.addEventListener('message', function (e) {
+  if (e.data && e.data.chipsFocusH) document.getElementById('chips-frame').style.height = (e.data.chipsFocusH + 10) + 'px';
+});
+</script>
+</div>
 
 <script>
 /* 2026/11/04：自動換成最新版(publish_entry_report.py 上傳時補的) */
 (function () {
-  var V = '20261127-004514';
+  var V = '20261127-010147';
   function check() {
     fetch('entry-version.json?t=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { return r.json(); })
