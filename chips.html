@@ -100,6 +100,7 @@ h1{font-size:21px;margin:6px 0 2px}
 .chip{font-size:11.5px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--ink2)}
 .chip.b{color:var(--buy);border-color:var(--buy)}
 .chip.s{color:var(--sell);border-color:var(--sell)}
+.fsel{gap:6px;margin:4px 0 0}.fsel button{padding:6px 11px;font-size:13px}
 .note{font-size:11.5px;color:var(--ink3);line-height:1.6;margin-top:12px}
 </style></head><body>
 <div class="wrap">
@@ -470,23 +471,31 @@ $('note').innerHTML = `• 資料來源：證交所「三大法人買賣超日�
   • 「全市場前5」＝上市上櫃全部個股（4碼、不含ETF／權證／特別股），張數跟金額排出來的名單不一樣（低價股張數容易很大）。`;
 // 2026/11/27 RAY要求：入場出場速覽第5個分頁「籌碼集中」＝從14格挑幾格的前幾名(只看買方、我的股票、張數、只看個股)
 const FOCUS = [
-  {id:'both_buy', lim:3, title:'1．同買（今日前3）'},
-  {id:'trust', lim:3, buy:1, title:'4．投信買超（今日前3）', desc:'只看投信，今天買超最多的3檔。'},
-  {id:'foreign', lim:3, buy:1, title:'5．外資買超（今日前3）', desc:'只看外資（不含外資自營商），今天買超最多的3檔。'},
-  {id:'flow', lim:3, buy:1, title:'9．資金流向（今日淨流入前3）', desc:'三大法人（外資＋投信＋自營商）今天買賣超金額合計，淨流入最多的3檔。'},
-  {id:'retail', lim:5, title:'13．散戶動向・籌碼集中（今日前5）', desc:'外資＋投信今天買超、融資卻減少（籌碼往法人集中），依融資減少最多排。上面一條「法人」、下面一條「融資」。'},
-  {id:'f_streak', sv:3, lim:3, buy:1, title:'6．外資連續買超（連3日↑ 前3）', desc:'外資連續買超3天以上（今天也要買），連買最久的3檔。'},
-  {id:'t_streak', sv:3, lim:3, buy:1, title:'7．投信連續買超（連3日↑ 前3）', desc:'投信連續買超3天以上（今天也要買），連買最久的3檔。'},
-  {id:'sync', sv:3, lim:3, buy:1, title:'8．土洋同步連買（連3日↑ 前3）', desc:'外資、投信同一天都買超，連續3天以上，最久的3檔。'},
-  {id:'ai', lim:5, title:'10．AI 籌碼前五名'},
-  {id:'big', sv:10, lim:5, title:'11．大量買超區（10日內最大 前5）', desc:'外資或投信今天的買超金額是最近10個交易日內最大，依金額取前5。'},
-  {id:'big', sv:20, lim:5, title:'11．大量買超區（20日內最大 前5）', desc:'外資或投信今天的買超金額是最近20個交易日內最大，依金額取前5。'},
+  {id:'both_buy', lim:3, sh:'1 同買', title:'1．同買（今日前3）'},
+  {id:'trust', lim:3, buy:1, sh:'4 投信', title:'4．投信買超（今日前3）', desc:'只看投信，今天買超最多的3檔。'},
+  {id:'foreign', lim:3, buy:1, sh:'5 外資', title:'5．外資買超（今日前3）', desc:'只看外資（不含外資自營商），今天買超最多的3檔。'},
+  {id:'flow', lim:3, buy:1, sh:'9 資金流入', title:'9．資金流向（今日淨流入前3）', desc:'三大法人（外資＋投信＋自營商）今天買賣超金額合計，淨流入最多的3檔。'},
+  {id:'retail', lim:5, sh:'13 籌碼集中', title:'13．散戶動向・籌碼集中（今日前5）', desc:'外資＋投信今天買超、融資卻減少（籌碼往法人集中），依融資減少最多排。上面一條「法人」、下面一條「融資」。'},
+  {id:'f_streak', sv:3, lim:3, buy:1, sh:'6 外資連買', title:'6．外資連續買超（連3日↑ 前3）', desc:'外資連續買超3天以上（今天也要買），連買最久的3檔。'},
+  {id:'t_streak', sv:3, lim:3, buy:1, sh:'7 投信連買', title:'7．投信連續買超（連3日↑ 前3）', desc:'投信連續買超3天以上（今天也要買），連買最久的3檔。'},
+  {id:'sync', sv:3, lim:3, buy:1, sh:'8 土洋連買', title:'8．土洋同步連買（連3日↑ 前3）', desc:'外資、投信同一天都買超，連續3天以上，最久的3檔。'},
+  {id:'ai', lim:5, sh:'10 AI前五', title:'10．AI 籌碼前五名'},
+  {id:'big', sv:10, lim:5, sh:'11 大量10日', title:'11．大量買超區（10日內最大 前5）', desc:'外資或投信今天的買超金額是最近10個交易日內最大，依金額取前5。'},
+  {id:'big', sv:20, lim:5, sh:'11 大量20日', title:'11．大量買超區（20日內最大 前5）', desc:'外資或投信今天的買超金額是最近20個交易日內最大，依金額取前5。'},
 ];
+// 2026/11/27 RAY：全部攤開太長、手機要一直滑 → 上面一排按鈕，一次只顯示一段(記住上次看哪段)
+let FSEL = +(st('chip_focus_sel') || 0); if (!(FSEL >= 0 && FSEL < FOCUS.length)) FSEL = 0;
+const fCount = f => { FOC = f; const c = CATS.find(x => x.id === f.id);
+  const n = c.kind === 'ai' ? Math.min(f.lim, (DATA.ai && DATA.ai.picks || []).length) : (m => Array.isArray(m) ? m.length : m.s.length)(trimF(c, members(c, f.sv)));
+  FOC = null; return n; };
 function renderFocus(){
-  const lw = LW();
-  $('focus').innerHTML = FOCUS.map((f, i) => { FOC = f; KEYP = 'f' + i + '_';
-    return `<div class="panel" style="--lw:${lw};margin-bottom:12px">${buildPanel(CATS.find(x => x.id === f.id), f.sv)}</div>`; }).join('');
+  const lw = LW(), f = FOCUS[FSEL];
+  const btns = `<div class="subt fsel">${FOCUS.map((x, i) => { const n = fCount(x);
+    return `<button data-i="${i}" class="${i === FSEL ? 'on' : ''}"${n ? '' : ' style="opacity:.45"'}>${x.sh}<small style="margin-left:3px;opacity:.7">${n}</small></button>`; }).join('')}</div>`;
+  FOC = f; KEYP = 'f' + FSEL + '_';
+  $('focus').innerHTML = btns + `<div class="panel" style="--lw:${lw};margin-top:8px">${buildPanel(CATS.find(x => x.id === f.id), f.sv)}</div>`;
   FOC = null; KEYP = '';
+  $('focus').querySelectorAll('.fsel button').forEach(b => b.onclick = () => { FSEL = +b.dataset.i; st('chip_focus_sel', FSEL); openCode = null; renderFocus(); });
   bindRows($('focus'), renderFocus);
 }
 let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => renderPanel(), 200); });
@@ -499,7 +508,7 @@ if (FOCUS_MODE) {
   $('focus-sub').innerHTML = `籌碼日期 <b>${DATA.date}</b>（前一個交易日傍晚公布的三大法人日報）｜範圍：我的持股＋長線標的＋鎖股觀察（不含ETF）｜只列買方｜點股票看近10天`;
   renderFocus();
   // 高度回報給外層(入場出場速覽)，讓iframe跟著內容長高、不用在框框裡面捲
-  const postH = () => { try { parent.postMessage({chipsFocusH: document.documentElement.scrollHeight}, '*'); } catch (e) {} };
+  const postH = () => { try { parent.postMessage({chipsFocusH: Math.ceil($('focus-wrap').getBoundingClientRect().bottom + window.scrollY + 12)}, '*'); } catch (e) {} };
   new ResizeObserver(postH).observe(document.body); postH();
 } else { renderGrid(); renderPanel(); }
 </script></body></html>
