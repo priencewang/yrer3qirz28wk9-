@@ -368,8 +368,11 @@ function renderPanel(scroll){
       A.picks.forEach((p, i) => {
         const s = DATA.stocks.find(x => x.code === p.code) || {};
         const sk = (n, cap, w) => n ? `<span class="chip ${n > 0 ? 'b' : 's'}">${w}連${dayTxt(n, cap)}${n > 0 ? '買' : '賣'}</span>` : '';
-        html += `<div class="ai"><div class="hd"><span class="rk">${i + 1}</span>${p.name || s.name}<small>${p.code}</small></div><p>${p.reason}</p>
-          <div class="chips"><span class="chip ${s.f >= 0 ? 'b' : 's'}">外資今天 ${sg(s.f || 0)}張</span><span class="chip ${s.t >= 0 ? 'b' : 's'}">投信今天 ${sg(s.t || 0)}張</span>${sk(s.fs, s.fcap, '外資')}${sk(s.ts, s.tcap, '投信')}</div></div>`;
+        // 2026/11/26 RAY要求：AI前五名卡片點一下展開近10日法人買賣超(跟其他格點開個股同一個detail())
+        const op = openCode === p.code && s.code;
+        html += `<div class="ai" data-code="${p.code}" style="cursor:pointer"><div class="hd"><span class="rk">${i + 1}</span>${p.name || s.name}<small>${p.code}</small></div><p>${p.reason}</p>
+          <div class="chips"><span class="chip ${s.f >= 0 ? 'b' : 's'}">外資今天 ${sg(s.f || 0)}張</span><span class="chip ${s.t >= 0 ? 'b' : 's'}">投信今天 ${sg(s.t || 0)}張</span>${sk(s.fs, s.fcap, '外資')}${sk(s.ts, s.tcap, '投信')}</div>
+          ${s.code ? `<div style="font-size:12px;color:var(--ink3);margin-top:6px">${op ? '收起 ▴' : '點我看近10日法人買賣超 ▾'}</div>` : ''}${op ? detail(s) : ''}</div>`;
       });
     }
   } else if ((mkt || c.kind === 'retail') ? !(ms.b.length + ms.s.length) : !ms.length) html += `<div class="empty">${c.kind === 'retail' && !ED.margin ? '還沒有融資資料。' : '今天沒有符合的股票。'}</div>`;
@@ -409,7 +412,7 @@ function renderPanel(scroll){
   $('panel').innerHTML = html;
   $('panel').querySelectorAll('.subt button').forEach(b => b.onclick = () => { sub[c.id] = isNaN(+b.dataset.v) ? b.dataset.v : +b.dataset.v; st('chip_sub', JSON.stringify(sub)); renderGrid(); renderPanel(); });
   $('panel').querySelectorAll('.dlbtn').forEach(b => b.onclick = e => { e.stopPropagation(); showDl = !showDl; renderPanel(); });
-  $('panel').querySelectorAll('.row').forEach(r => r.onclick = () => { openCode = openCode === r.dataset.code ? null : r.dataset.code; renderPanel(); });
+  $('panel').querySelectorAll('.row, .ai[data-code]').forEach(r =>r.onclick = () => { openCode = openCode === r.dataset.code ? null : r.dataset.code; renderPanel(); });
   if (scroll && window.innerWidth < 720) $('panel').scrollIntoView({behavior: 'smooth', block: 'start'});
 }
 $('etf-tg').querySelectorAll('button').forEach(b => { b.classList.toggle('on', (b.dataset.v === '1') === withEtf);
