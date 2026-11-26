@@ -322,7 +322,21 @@ function candleChart(svgId, rs, k, h, dec){
   charts.push({svg, rs, key: k + 'C', x, y, padL, padR, W});
 }
 const ohlc = (v, dec) => !v ? '—' : (v.o == null || v.est) ? `收 ${fmt(v.c, dec)}` : `開 ${fmt(v.o, dec)} 高 ${fmt(v.h, dec)} 低 ${fmt(v.l, dec)} 收 <b>${fmt(v.c, dec)}</b>`;
-function hover(clientX, clientY){
+// 2026/11/27 RAY要求：滑到哪張圖，提示框就只顯示那張圖的資訊(原本每張圖都跳整份大盤狀態)
+function tipBody(id, r){
+  const ph = `<i class="sw" style="background:${pc(r.phase)}"></i> ${r.phase}（${r.score}/4）`;
+  switch (id) {
+    case 'c1': return `${ph}<br>指數 <b>${fmt(r.close, 2)}</b><br>價：${r.price_state}（5日 ${r.ret5>0?'+':''}${r.ret5}%）`;
+    case 'c2': return `成交金額 <b>${fmt(r.amount)}億</b><br>量：${r.vol_state}（5日均÷60日均 ${r.vol_ratio}倍）`;
+    case 'c3': return `融資餘額${mdate(r)} <b>${fmt(r.margin, 1)}億</b>，較前一天 ${d1(r.margin_d1)}<br>資：${r.margin_change || '—'}／${r.margin_level || '—'}（融資÷指數 比近2年 ${r.margin_ratio_pct ?? '—'}% 的日子高）`;
+    case 'c3b': return `上市融資維持率 <b>${r.mr != null ? r.mr.toFixed(2) + '%' : '—'}</b><br>證交所整戶擔保 ${r.mro != null ? r.mro.toFixed(2) + '%' : '—'}${r.mrc ? `<br>追繳 ${r.mrc.toLocaleString()} 戶、${r.mra}億` : ''}`;
+    case 'c4': return `匯率 ${ohlc(r.fx, 3)}`;
+    case 'c5': return `美國VIX ${ohlc(r.vix, 2)}`;
+    case 'c6': return `台指VIX ${ohlc(r.tvix, 2)}`;
+  }
+  return ph;
+}
+function hover(clientX, clientY, srcId){
   const tip = document.getElementById('tip');
   let r = null;
   charts.forEach(c => {
@@ -335,13 +349,7 @@ function hover(clientX, clientY){
     if (r[c.key] != null) { dot.setAttribute('cx', c.x(i)); dot.setAttribute('cy', c.y(r[c.key])); dot.style.display = ''; }
   });
   if (!r) return;
-  tip.innerHTML = `<b>${r.date}</b>　<i class="sw" style="background:${pc(r.phase)}"></i> <b>${r.phase}</b>（${r.score}/4）<br>
-    指數 ${fmt(r.close, 2)}<br>價：${r.price_state}（5日 ${r.ret5>0?'+':''}${r.ret5}%）<br>
-    量：${r.vol_state}（成交 ${fmt(r.amount)}億，5日均÷60日均 ${r.vol_ratio}倍）<br>
-    資：${r.margin_change || '—'}／${r.margin_level || '—'}（融資÷指數 比近2年 ${r.margin_ratio_pct ?? '—'}% 的日子高）<br>
-    融資餘額${mdate(r)} ${fmt(r.margin, 1)}億，較前一天 ${d1(r.margin_d1)}<br>
-    上市融資維持率 <b>${r.mr != null ? r.mr.toFixed(2) + '%' : '—'}</b>｜證交所整戶擔保 ${r.mro != null ? r.mro.toFixed(2) + '%' : '—'}${r.mrc ? `（追繳 ${r.mrc.toLocaleString()} 戶、${r.mra}億）` : ''}<br>
-    匯率 ${ohlc(r.fx, 3)}<br>美國VIX ${ohlc(r.vix, 2)}<br>台指VIX ${ohlc(r.tvix, 2)}`;
+  tip.innerHTML = `<b>${r.date}</b><br>${tipBody(srcId, r)}`;
   tip.style.display = 'block';
   const tw = tip.offsetWidth, th = tip.offsetHeight;
   let lx = clientX + 14; if (lx + tw > window.innerWidth - 8) lx = clientX - tw - 14; if (lx < 8) lx = 8;
@@ -371,8 +379,8 @@ function render(){
   segTable(rs);
   charts.forEach(c => {
     // 2026/11/25 RAY：手機要按住才看得到不方便 → 手指點一下就固定顯示，點圖表以外的地方才收起；滑鼠照舊移過去就顯示
-    c.svg.onpointermove = e => { if (e.pointerType === 'mouse') hover(e.clientX, e.clientY); };
-    c.svg.onpointerdown = e => hover(e.clientX, e.clientY);
+    c.svg.onpointermove = e => { if (e.pointerType === 'mouse') hover(e.clientX, e.clientY, c.svg.id); };
+    c.svg.onpointerdown = e => hover(e.clientX, e.clientY, c.svg.id);
     c.svg.onpointerleave = e => { if (e.pointerType === 'mouse') hideHover(); };
   });
 }
